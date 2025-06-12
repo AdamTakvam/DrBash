@@ -1,0 +1,55 @@
+#!/bin/bash
+
+source "${USERLIB-$HOME/lib}/general.sh
+Require "$requires_"
+
+HelpSummary() {
+  echo "$summary_"
+}
+
+# Optional
+HelpConstants() {
+  echo -e "\tCONST_1\tYou're not obligated to implement all of these."
+  echo -e "\tCONST_2\tThe point of listing constants is to communiccate your baked-in assumptions to the user"
+  echo -e "\t\t\t\tso they can hopefully spot whether one or more such assumptions are wrong and proactively fix it before something bad happens."
+}
+
+# Optional
+HelpErrors() {
+  echo -e "$(Header "Common Errors:")"
+  echo -e "\t####\tThe # characters represent a script-defined error code that is included in the real-time error logged."
+  echo -e "\t\t\t\tIt is highly recommended that you assign a numeric code to every unique error condition your script might encounter."
+  echo -e "\t####\tBrief description of the error."
+  echo -e "\t\tCause: "
+  echo -e "\t\tSolution(s): "
+}
+
+# Optional
+HelpExamples() {
+  echo -e "$(Header "Examples:")"
+  echo -e "Example #:\tState objective."
+  echo -e "\tFiles:\tDescribe source data to be acted upon, if applicable."
+  echo -e "\tCommand:\tExample of how the syntax of a command that accomplishes the stated objective might look."
+  echo -e "\tResult:\tAn example of how the script output might appear."
+  echo
+  echo -e "Example 1:\tRename all files with .data extension to .txt"
+  echo -e "\tFiles:\tcmd.data stuff.data"
+  echo -e "\tCommand:\t$APPNAME .data .txt"
+  echo -e "\tResult:\tcmsd.txt stuff.txt"
+}
+
+# Main help method
+Help()
+{
+  local -a sections=(HelpSummary HelpConcept HelpUsage HelpEnvironment HelpConstants HelpErrors HelpExamples)
+
+  tabs 4
+  echo
+
+  for section in "${sections[@]}"; do
+    content="$(env "$section")"
+    if [ "$content" ]; then
+      echo "$content\n"
+    fi
+  done
+}
