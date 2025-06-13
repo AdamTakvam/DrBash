@@ -38,6 +38,10 @@ ihere should be a script in here that you can run to install that dependency. Fo
 
 To get you oriented, here is a brief overview of the most significant scripts in this repo. Other scripts you may encounter should be used with caution as they may be extremely niche or simply old and poorly maintained. Nonetheless, they should all print a help page when invoked with a '-h'. So either start there or start by just cracking them open and peeking at what is inside, whichever suits you better.
 
+Naming Convention: 
+* The directories named with a ".shd" extension contain scripts that were written on the platform. 
+* The directories lacking the extension are part of the platform itself.
+
 Remember, after running 'mkbinlink' you don't need to include the ".sh" extension to run any of these scripts nor do you need to be in the directory where they reside.
 
 To learn about all of the options and syntactical details, run the desired script with the "-h" parameter.
@@ -50,13 +54,14 @@ To learn about all of the options and syntactical details, run the desired scrip
 * debug.sh : A simple script to easily run any script you name in the bash debugger.
 * explain-this.sh : A tool that dynamically interrogates the scripts in this collection and extracts summaries of their functionality, which it then collates and displays to the user as a README-style document.
 * mkbinlink.sh : The exception to the rule. This one is intended to be run directly, ".sh" exetension and all. It makes links in the ~/bin directory for all of the executable scripts in this collection. 
-* script.template.sh : An example script that for anyone wanting to write a script leveraging this platform to be able rto simply copy and get right to work with all of the platflorm-specific srtuff already taken care of.
-* template.shd : This is a different approach to script templating. This one accomplishes much the same goal as script.template.shd, but in a different way. This template is intended to be sourced. It provides many common functions, but delegates the implementation of the custom parts to you by way of prescribed functions that must be implemented. It is currently experimental.
+* script.template.sh : An example script that for anyone wanting to write a script leveraging this platform to be able to simply copy and get right to work with all of the platform-specific stuff already taken care of.
+* template.shd : This is a different approach to script templating. This one accomplishes much the same goal as script.template.sh, but in a different way. This template is intended to be sourced. It provides many common functions, but delegates the custom parts to the developer by way of prescribed functions that must be implemented. It is currently experimental.
 
 ## env/
+< See "The Environment Commands" section for more details. >
 
 ## lib/
-* < See "The Base Class Libraries" section for more detauils. >
+< See "The Base Class Libraries" section for more detauils. >
 
 ## media.shd/
 
@@ -133,6 +138,11 @@ A collection of powerful methods to serializing, deserialkizing, and making bulk
 * Sources: [nothing]
 * What happens when I source it? Nothing.
 * What does this file provide? A collection of powerful methods to serializing, deserialkizing, and making bulk edits to arrays.
+
+# The Environment Commands
+These scripts are intended to be sourced into one's environment - usually in ~/.bashrc - to serve as complimentary commands to the ones Bash natively provides. As such, the script files themselves are of little interest. The important part is the commands themselves, of which there can be many per file. So, lets dig in...
+
+[work in progress]
 
 # Environment Variables
 You're going to want to define these in your .bashrc file:
