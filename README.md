@@ -175,14 +175,18 @@ It is only necessary to create these if you want to use the media-related script
 # FAQ
 
 Q: That is quite a big assumption that you've based these scripts on. What if I'm inclined to help expand the range of systems these scripts work on?
+
 A: If you are running another distro, notice a script not working properly, are motivated to get the script working on that distro, and add proper conditional code to make your changes take effect only on the distros you've tested and certified the functionality on, then by all means issue a pull request for that shizz. 
 However, I'm not especially interested in backports to earlier versions of Bash prior to 4 because I'm well aware that I make heavy use of Bash-isms that didn't exist in Bash 3. So let's just let the past stay in the past, OK?
 
 Q: Why can't I install these utilities as a package with apt?
+
 A: Because we're just not that cool yet. Maybe one day..
 
 Q: You say Bash, but will these run under 'ksh', 'zsh', or 'fish'?
+
 A: Absolutely not! There's not even a chance. I can promise you that these scripts will fail miserably under any other shell. These scripts use "Bashisms" all over the place to push the capabilities of Bash to its absolute limits. You think you can go in and rewrite these to be POSIX-compliant? You neef a new hobby because that one is a waste of your time. There's simply no way that will ever happen.
 
 Q: But they shouldn't care what shell the user is running because the shebang line will invoke Bassh to run thge scripts!
+
 A: Except the parts that are intended to be sourced, like everything in 'env//'. Doh!
