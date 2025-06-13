@@ -1,4 +1,4 @@
-# Admin-Sripts
+# Admin-Scripts
 A collection of bash scripts for basic (and not-so-basic) system administration. See the Philosophy section below for more details on what makes this repo special.
 
 ## ASSumptions 
@@ -11,7 +11,7 @@ Basically, I'm just one guy and I'm not assuming that anyone will fall in love w
 ## Installation
 * There is no apt package for this repo. These are scripts; the source is the executable.
 * Clone this repo then run the ./mkbinlink script to create symlinks in `~/bin` to the executable scripts in this repo.
-* Ensure that '~/bin/' is in your path and Bob's your uncle. (I'm not really that old, I just think it's funny to talk like I am)
+* Ensure that '~/bin/' is in your path and Bob's your uncle. (I'm not really that old; I just think it's funny)
 * Refer to the Scripts section below for a summaery of what the most significant scripts do.
 
 ## Usage
@@ -34,20 +34,41 @@ done
 * installers : If a script has an external dependency on a package that does not exist in the main Debian repo, then t:noh
 ihere should be a script in here that you can run to install that dependency. For the most part, the scripts in here should just add third-party repos so that you can then just `apt-get install` what you need.
 
-# Scripts
+# Executable Scripts
 
 To get you oriented, here is a brief overview of the most significant scripts in this repo. Other scripts you may encounter should be used with caution as they may be extremely niche or simply old and poorly maintained. Nonetheless, they should all print a help page when invoked with a '-h'. So either start there or start by just cracking them open and peeking at what is inside, whichever suits you better.
 
-[section not yet complete]
+Remember, after running 'mkbinlink' you don't need to include the ".sh" extension to run any of these scripts nor do you need to be in the directory where they reside.
 
-## /
+To learn about all of the options and syntactical details, run the desired script with the "-h" parameter.
+
+[work in progress]
+
+## [root]/
 * ad-hoc-web-server : A quick and easy web server that provides HTTP access to whatever files are in the current directory when you run the command.
 * chmodt : Adds the ability to specify whether you want chmod to act on only files or directories. Particularly useful if you don't like destroying your directory structure when recursing subdirectories. It's actually quite surprising that this is not in the command itself.
+* debug.sh : A simple script to easily run any script you name in the bash debugger.
+* explain-this.sh : A tool that dynamically interrogates the scripts in this collection and extracts summaries of their functionality, which it then collates and displays to the user as a README-style document.
+* mkbinlink.sh : The exception to the rule. This one is intended to be run directly, ".sh" exetension and all. It makes links in the ~/bin directory for all of the executable scripts in this collection. 
+* script.template.sh : An example script that for anyone wanting to write a script leveraging this platform to be able rto simply copy and get right to work with all of the platflorm-specific srtuff already taken care of.
+* template.shd : This is a different approach to script templating. This one accomplishes much the same goal as script.template.shd, but in a different way. This template is intended to be sourced. It provides many common functions, but delegates the implementation of the custom parts to you by way of prescribed functions that must be implemented. It is currently experimental.
 
 ## env/
 
 ## lib/
 * < See "The Base Class Libraries" section for more detauils. >
+
+## media.shd/
+
+## net.shd/
+
+## serial.shd/
+
+## system.shd/
+
+## web.shd/
+
+## zfs.shd/
 
 # Philosophy
 
@@ -81,7 +102,7 @@ The logging subsystem. This is kind of the nexus of the whole thing. All roads l
 
 * Sources: arrays.sh
 * What happens when I source it? It will ravage your command line arguments at parse out the ones related to logging. This is essentially it setting itself up so that you don't have to worry about it. But maintaining this abstraction does mean you have to do a few things in a very specific way... (see below)
-* What does this file provide? Everything you need to log to the console or to the Systemd journal can be found here. There are four logging levels: Quiet, Normal, Verbose, and Debug. These are set automatically depending on whether the user specified -q, <nothing>, -v, or -vv on the command line. There are functions for fancy formatting, colors, and all sorts of fun things. There's even an abstraction for reading user input that was recently added. 
+* What does this file provide? Everything you need to log to the console or to the Systemd journal can be found here. There are four logging levels: Quiet, Normal, Verbose, and Debug. These are set automatically depending on whether the user specified -q, [nothing], -v, or -vv on the command line. There are functions for fancy formatting, colors, and all sorts of fun things. There's even an abstraction for reading user input that was recently added. 
 * So what needs to be done a specific way? Mostly, your Help() function has to be caerefully written to maintain the abstraction. Hopefully, by the time you read this, a script template will exist in the root of this repository with a working example of exactly what to do. If it isn't, then have a look at how one of the media scripts do it. media-merge.sh is a good example. If you want to see a very complex example, check out media-fixtitle-latest.sh.
 
 Essential functions:
@@ -100,7 +121,7 @@ Essential functions:
 * LogTable - Accepts multiline input and renders it as a table using tab '\t' as the delimiter.
 * ColorText - Renders whatever text you pass to it in trhe color you specify. Source this file from your shell and the run 'ShowColors' to see the options.
 
-* "Wait a second... why would you ever need to log an error at Verbose or Debug levels?" Great question! Logically, you probably wouldn't. But this isn't logic; this is Bash. In Bash, return values are printed like any other output to stdout and then redirected by the caller to avoid actually printing on screen. In such a method, if you want something to print to the screen, then you have no other choice but to direct it through stderr.
+"Wait a second... why would you ever need to log an error at Verbose or Debug levels?" Great question! Logically, you probably wouldn't. But this isn't logic; this is Bash. In Bash, return values are printed like any other output to stdout and then redirected by the caller to avoid actually printing on screen. In such a method, if you want something to print to the screen, then you have no other choice but to direct it through stderr.
 
 Notes:
 * All of the Log* functions accept a message as a parameter or piped in.
@@ -109,7 +130,7 @@ Notes:
 ## arrays.sh
 A collection of powerful methods to serializing, deserialkizing, and making bulk edits to arrays.
 
-* Sources: <nothing>
+* Sources: [nothing]
 * What happens when I source it? Nothing.
 * What does this file provide? A collection of powerful methods to serializing, deserialkizing, and making bulk edits to arrays.
 
