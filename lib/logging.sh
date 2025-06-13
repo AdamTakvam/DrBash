@@ -301,6 +301,7 @@ LogHeaderError() {
   LogError "$(Log "$1" "$2" | Header --)"
 }
 
+# Print message right-justified in the console window
 LogRight() {
   msg="$(Log "$1")"
   [ "$msg" ] && printf "%${COLUMNS}s" "$msg"

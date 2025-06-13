@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/general.sh"
+source "${USERLIB:-$HOME/lib}/run.sh"
 
 # Environment Variables
 : ${LOGROOT:="/var/log"}
@@ -13,32 +13,33 @@ declare -r LOGROOT="/var/log"
 
 PrintHelp() {
   tabs 4
-  echo "Displays the log for the indicated service. Some known services will display accurate results. For all others, the script makes reasonable guesses to find the logs."
-  echo
-  echo "Usage: $APPNAME [FLAGS] SERVICE"
-  echo
-  echo "FLAGS:"
-  echo -e "\t-h\t\tDisplay this help screen."
-  echo -e "\t-s\t\tAlso display service status (not applicable in all cases)"
-  echo -e "\t-n #\tNumber of most recent log message to display (default: 40)"
-  echo -e "\t-v\t\tVerbose output"
-  echo -e "\t-vv\t\tDebug mode"
-  echo -e "SERVICE\t\tThe name of a service (aka \"unit\")"
-  echo
-  echo "Supported Services:"
-  echo -e "\tsystem\t\tKernel service"
-  echo -e "\tapt\t\t\tSoftware installation"
-  echo -e "\tplex\t\tPlex media server"
-  echo -e "\tsamba\t\tWindows interop service"
-  echo -e "\tnet\t\tLinux networking subsystem"
-  echo -e "\tiperf\t\tPerformance benchmarking tool"
-  echo -e "\t*\t\t\tAnything else will be attemped on a best-effort basis"
-  echo
-  echo "Environment Variables:"
-  echo -e "\tLOGROOT\tThe location of your log files (default: /var/logs)"
-  echo -e "\tHOSTNAME\tThe name of this computer (if unset, we'll get it another way. Don't sweat it.)"
-  echo -e "\tPLEX_HOME\tThe location of the Plex Media Server data directoty (default: /var/lib/plexmediaserver/Library/Application Support/Plex Media Server/"
-  echo
+  Log "Displays the log for the indicated service. Some known services will display accurate results. For all others, the script makes reasonable guesses to find the logs."
+  Log
+  Log "$(Header "Usage:") $APPNAME [FLAGS] SERVICE"
+  Log
+  LogHeader "FLAGS:"
+  LogTable "\t-h\tDisplay this help screen.
+  \t-s\tAlso display service status (not applicable in all cases)
+  \t-n #\tNumber of most recent log message to display (default: 40)
+  \t-v\tVerbose output
+  \t-vv\tDebug mode"
+  Log
+  Log "$(Header "SERVICE:")\tThe name of a service (aka "unit")"
+  Log
+  LogHeader "Supported Services:"
+  LogTable "\tsystem\tKernel service
+  \tapt\tSoftware installation
+  \tplex\tPlex media server
+  \tsamba\tWindows interop service
+  \tnet\tLinux networking subsystem
+  \tiperf\tPerformance benchmarking tool
+  \t*\tAnything else will be attemped on a best-effort basis"
+  Log
+  LogHeader "Environment Variables:"
+  LogTable "\tLOGROOT\tThe location of your log files (default: /var/logs)
+  \tHOSTNAME\tThe name of this computer (if unset, we'll get it another way. Don't sweat it.)
+  \tPLEX_HOME\tThe location of the Plex Media Server data directoty (default: /var/lib/plexmediaserver/Library/Application Support/Plex Media Server/"
+  Log
 }
 
 declare -a logFiles=() svcs=()
@@ -106,13 +107,13 @@ esac
 # Display the service status and logs
 declare -a logs
 for svc in "${svcs[@]}"; do
-  Log "Service: $svc"
-#  Log "--------------------"
+  Log "\nService: $svc"
+  Log "--------------------"
   
   # Get service status, if requested
   if [ $svcStats ]; then
     Run systemctl status "$svc"
-    echo
+    Log
   fi
 
   # Get log from Journal
@@ -125,7 +126,7 @@ for logFile in "${logFiles[@]}"; do
   if [ -r "$logFile" ]; then
     Log "${logFile}:"
     Run tail -$numLines "$logFile"
-    echo
+    Log
   else
     [ -f "$logFile" ] \
       && LogDebug "Log file exists but is not readable: $logFile\n" \

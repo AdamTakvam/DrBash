@@ -1,5 +1,5 @@
-# bash
-A collection of bash scripts for basic (and not-so-basic) system administration
+# Admin-Sripts
+A collection of bash scripts for basic (and not-so-basic) system administration. See the Philosophy section below for more details on what makes this repo special.
 
 ## ASSumptions 
 These scripts are only intended to work correctly on Debian 12 with Bash 5. 
@@ -9,10 +9,10 @@ So, if you find a bug and you're running something else, you must verify it on t
 Basically, I'm just one guy and I'm not assuming that anyone will fall in love with a collection of shell scripts to the point that they're motivated to make a big deal out of it by supporting everything under the sun. So it is what it is.
 
 ## Installation
-There is no apt package for this repo. These are scripts; the source is the executable.
-Clone this repo then run the ./mkbinlink script to create symlinks in `~/bin` to the executable scripts in this repo.
-Ensure that '~/bin/' is in your path and Bob's your uncle. (I'm not really that old, I just think it's funny to talk like I am)
-Refer to the Scripts section below for a summaery of what the most significant scripts do.
+* There is no apt package for this repo. These are scripts; the source is the executable.
+* Clone this repo then run the ./mkbinlink script to create symlinks in `~/bin` to the executable scripts in this repo.
+* Ensure that '~/bin/' is in your path and Bob's your uncle. (I'm not really that old, I just think it's funny to talk like I am)
+* Refer to the Scripts section below for a summaery of what the most significant scripts do.
 
 ## Usage
 How the scripts are used varies depending on the directory they are found in:
@@ -31,7 +31,8 @@ done
 
 * snippets : Examples of how to do certain things, how to call the modules, or just neat bash tricks. The code in here is inttended for copy/paste usage.
 
-* installers : If a script has an external dependency on a package that does not exist in the main Debian repo, then there should be a script in here that you can run to install that dependency. For the most part, the scripts in here should just add third-party repos so that you can then just `apt-get install` what you need.
+* installers : If a script has an external dependency on a package that does not exist in the main Debian repo, then t:noh
+ihere should be a script in here that you can run to install that dependency. For the most part, the scripts in here should just add third-party repos so that you can then just `apt-get install` what you need.
 
 # Scripts
 
@@ -46,7 +47,99 @@ To get you oriented, here is a brief overview of the most significant scripts in
 ## env/
 
 ## lib/
+* < See "The Base Class Libraries" section for more detauils. >
 
+# Philosophy
+
+What you're looking at is a scriptuiung framework built in Bash for creating a suite of utilities with a common look and feel as well as a structured methodology for developemnt.So, naturally you're going to hate it at first. It's the irony of the fact that offering capabuilities to people also requires introducing usability limitations. So you're going to have to take a moment and read this to be able to undertsand what's going on.
+
+ChatGPT has reveiwed much of this code and it says that I'm taking Bash scripts somewhere that they were never intended to go. I appreciate the compliment. But I'm really just trying to make Bash follow proper programming conventions and structures as much as possible. So you'll note the use of abstractions, inheritance, separation of concerns, data-driven development and all sorts of goodies like that.
+
+To that end, the most important scripts are located in the 'lib/' directory. This is your new Base Class Libraries (BCL). In here, you will find your logging subsystem (logging.sh), a runtime abstraction that integrated with logging to create a sandbox-type experience (run.sh), general helper utilities (general.sh), and specialized utilties (see next section).
+
+# The Base Class Libraries (lib/)
+These are the scripts located in 'lib/'. They form the basis for all of the other scripts in this collection.
+
+## run.sh
+This is generally the main stareting point and the script that you'll want to include to get the most access to the kingdom. 
+
+* Sources: general.sh, logging.sh
+* What happens when I source it? This file does nothing upon being sourced, but check the dependencies!
+* What does this file provide? This file gives you a much more capable environment for reliably executing other programs, scriptrs, command, aliases, built-ins, etc. If the code isn't in your script, but it is located elsewhere, just place the word 'Run' before the normal command with all of its parameters just like you normally would and let the framework handle it.
+* I don't get it. I can run things just fine now! Sure, because it's your computer and you've got it all setup just the way it needs to be. So of course you can. But is my computer setup to run your stuff? How do you know? If it's not, what are you going to do about it? Run.sh answers those questions. If you wqrite a script that requires 'ffmpeg', for example, run.sh will check whether 'ffmpeg' is installed. If it isn't, run.sh will install it. You see? There's more to this that you thought, huh? Trust the libraries. They've got your back!
+* Debug mode: logging.sh includes the concept of a debug mode which can be set by passing '-vv' to any script. Run.sh integrates with this to provide a simulation mode where anything passed in to 'Run' gets all the way to the point of being executed, but at the last moment the command that would have been executed gets logged instead. Thuis provides a built-in way to perform dry runs of things that might alter other files or do things that take a minute to sert back up again before you can do another test run.
+
+## general.sh
+A smattering of utility methods and some annoying config loader logic.
+
+* Sources: logging.sh
+* What happens when I source it? It will attempt to source $USERDATA/media-scripts.conf. If you don't care about the media management stuff, then just put an empty file there to shut it up.
+* What does this file provide? This is a collection of generally helpful little functions arounf user management, sudoing, and stuff like that. It's a short file; it's probably best to just take a quick peek at it.
+
+## logging.sh
+The logging subsystem. This is kind of the nexus of the whole thing. All roads lead to logging.sh.
+
+* Sources: arrays.sh
+* What happens when I source it? It will ravage your command line arguments at parse out the ones related to logging. This is essentially it setting itself up so that you don't have to worry about it. But maintaining this abstraction does mean you have to do a few things in a very specific way... (see below)
+* What does this file provide? Everything you need to log to the console or to the Systemd journal can be found here. There are four logging levels: Quiet, Normal, Verbose, and Debug. These are set automatically depending on whether the user specified -q, <nothing>, -v, or -vv on the command line. There are functions for fancy formatting, colors, and all sorts of fun things. There's even an abstraction for reading user input that was recently added. 
+* So what needs to be done a specific way? Mostly, your Help() function has to be caerefully written to maintain the abstraction. Hopefully, by the time you read this, a script template will exist in the root of this repository with a working example of exactly what to do. If it isn't, then have a look at how one of the media scripts do it. media-merge.sh is a good example. If you want to see a very complex example, check out media-fixtitle-latest.sh.
+
+Essential functions:
+
+* Log - Writes to the console (stdout). 
+* LogError - Writes to the console (stderr)
+* LogVerbose - Writes to the console if Verbose mode is active
+* LogVerboseError - I think you can guess. We're not trying to trick you here.  ;-)
+* LogDebug - Writes to the console if Debug mode is active
+* LogDebugError - Rinse and repeat.
+* LogParamsHelp - Call this from your Help() function to print the log-related parameters.
+* Journal - Write to the SystemD Journaling subsystem
+* LogTee - Write to both the console and Journal
+* LogHeader - Will spit out whatever you pass into it in what appears to be bold face. Intended for situations where the header takes up the entire line.
+* Header - Same as 'LogHeader' except used when you only want to emphasize a portion of the text on a line.
+* LogTable - Accepts multiline input and renders it as a table using tab '\t' as the delimiter.
+* ColorText - Renders whatever text you pass to it in trhe color you specify. Source this file from your shell and the run 'ShowColors' to see the options.
+
+* "Wait a second... why would you ever need to log an error at Verbose or Debug levels?" Great question! Logically, you probably wouldn't. But this isn't logic; this is Bash. In Bash, return values are printed like any other output to stdout and then redirected by the caller to avoid actually printing on screen. In such a method, if you want something to print to the screen, then you have no other choice but to direct it through stderr.
+
+Notes:
+* All of the Log* functions accept a message as a parameter or piped in.
+* All of the Log* functions know how to render control characters (e.g. '\n')
+
+## arrays.sh
+A collection of powerful methods to serializing, deserialkizing, and making bulk edits to arrays.
+
+* Sources: <nothing>
+* What happens when I source it? Nothing.
+* What does this file provide? A collection of powerful methods to serializing, deserialkizing, and making bulk edits to arrays.
+
+# Environment Variables
+You're going to want to define these in your .bashrc file:
+
+* USERSRC - Set this to the directory that this repo is cloned into
+* USERLIB - Set this to: '$USERSRC/lib'
+* USERENV - Set this to: '$USERSRC/env'
+* USERBIN - Set this to: '$(readlink ~/bin)'
+* USERDATA - This is where your config files will be. Can be anywhere except in the directory where you cloned this repo. I set mine to: '"$HOME/src/.data'
+
+These are for the media management sub-project. You can define these in '$USERDATA/media-scripts.conf'
+
+* MEDIADATA - (optional) The location of media-scripts.conf. If not set, USERDATA will be used instead. [don't bother setting this]
+* MEDIAREPO - This is your main media repository. Should be '~/media' or '~/movies' or whatever.
+* MEDIAEXTS - (optional) File extensions that should be considered media files. Defaults to 'mp4 avi'.
+* MEDIAUSER - This is only if you decide to use the permnissions script, which you probably won't. 
+* MEDIAGROUP - This and the previous variable are what the permissions script will set your files to.
+
+# Configuration Files
+It is only necessary to create these if you want to use the media-related scripts. Even then, all but media-scripts.conf are optional. These are located in '$USERDATA':
+
+* media-scripts.conf - (sourced) An attempt to centralize what config can be centralized among the media scripts. Currently, it's just the collection of environment variables mention above.
+* media-fixtags-tagfixes.shdata - (parsed) The contents of an associative array containing regular expressions as keys and literal strings as values. Normal Bash syntax, but only the part that would normally follow after the equals sign in such an array declaration. Used to correct manual entry errors in media file tags.
+* media-fixtitle-abbr.shdata - (parsed) This is just a list (one per line) of abbreviations or anything else that you want to always be in upper case in media file names.
+* media-fixtitle-delete.shdata - (parsed) This is a list of regular expressions (one per line) that if matched against a filename will indicate that it should be deleted. Examples include stuff like '.crdownload', '.part', etc. 
+* media-fixtitle-filler.shdata - (parsed) This is basically the opposite of media-fixtitle-abbr.shdata. Anothing you want to always be in lowercase gets listed here. These are usually filler words like "a", "in", "the", etc. Note: This does not apply to the first word in a title.
+* media-fixtitle-patterns.shdata - (parsed) This is a list of regular expressions (one per line) that will be removed from media filenames. This is different from delete that deletes all files with names matching the pattern. Instead this matches and removes substrings from titles.
+* setperms.conf - (sourced) Sets a few environment variables used by the setperms.sh script that you won't use, so don't worry about it.
 
 # FAQ
 
@@ -56,3 +149,9 @@ However, I'm not especially interested in backports to earlier versions of Bash 
 
 Q: Why can't I install these utilities as a package with apt?
 A: Because we're just not that cool yet. Maybe one day..
+
+Q: You say Bash, but will these run under 'ksh', 'zsh', or 'fish'?
+A: Absolutely not! There's not even a chance. I can promise you that these scripts will fail miserably under any other shell. These scripts use "Bashisms" all over the place to push the capabilities of Bash to its absolute limits. You think you can go in and rewrite these to be POSIX-compliant? You neef a new hobby because that one is a waste of your time. There's simply no way that will ever happen.
+
+Q: But they shouldn't care what shell the user is running because the shebang line will invoke Bassh to run thge scripts!
+A: Except the parts that are intended to be sourced, like everything in 'env//'. Doh!
