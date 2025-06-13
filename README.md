@@ -185,8 +185,5 @@ A: Because we're just not that cool yet. Maybe one day..
 
 Q: You say Bash, but will these run under 'ksh', 'zsh', or 'fish'?
 
-A: Absolutely not! There's not even a chance. I can promise you that these scripts will fail miserably under any other shell. These scripts use "Bashisms" all over the place to push the capabilities of Bash to its absolute limits. You think you can go in and rewrite these to be POSIX-compliant? You neef a new hobby because that one is a waste of your time. There's simply no way that will ever happen.
+A: Yes. The scripts in the .shd directories should run fine. They've had limited testing on zsh and they worked fine because the shebang line causes them to run under bash regardless of the shell used to invoke them. However, you could run into issues with sourcing the scripts in 'env/'.
 
-Q: But they shouldn't care what shell the user is running because the shebang line will invoke Bassh to run thge scripts!
-
-A: Except the parts that are intended to be sourced, like everything in 'env//'. Doh!
