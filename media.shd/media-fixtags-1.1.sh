@@ -85,25 +85,50 @@ $(PrintLogHelp -q=0)
 # Creates a resolution tag
 # $1 = file name
 # output = rez
-GetResolution() {
+
+# 7680 x 4320 = 33,177,600 (8K)
+let min_8k=20736000
+# 3840 x 2160 = 8,294,400 (4K)
+let min_4k=5990400
+# 2560 x 1440 = 3,686,400 (1440p)
+let min_1440=2880000
+# 1920 x 1080 = 2,073,600 (1080p)
+let min_1080=1497600
+# 1280 x 720 = 921,600 (720p)
+let min_720=614400
+# 640 x 480 = 307,200 (480p)
+let min_480=240000
+# 480 x 320 = 172,800 (320p)
+let min_320=129600
+# 360 x 240 = 86,400 (240p)
+
+GetResolution() {  
   declare -r file="$1"
-  declare -ir rez="$(exiftool -ImageHeight "$file" | awk '{ printf $4 }')"
-  if (( $rez > 7000 )); then
+  declare -a rezArr
+  IFS=$'\n' rezArr=($(exiftool -ImageHeight -ImageWidth "$file" | awk '{ printf $4"\n" }'))
+  if [ "${#rezArr[@]}" != 2 ]; then
+    LogError "Error reading resolution from: $file (no data)"
+    return 1
+  fi
+
+  LogVerboseError "Resolution: ${rezArr[0]} x ${rezArr[1]}"
+
+  let rez=$(( ${rezArr[0]} * ${rezArr[1]} ))
+
+  if (( $rez > $min_8k )); then
     echo "8k"
-  elif (( $rez > 5000 )); then
-    echo "6k"
-  elif (( $rez > 3000 )); then
+  elif (( $rez > $min_4k )); then
     echo "4k"
-  elif (( $rez > 1500 )); then
-    echo "2k"
-  elif (( $rez > 900 )); then
+  elif (( $rez > $min_1440 )); then
+    echo "1440p"
+  elif (( $rez > $min_1080 )); then
     echo "1080p"
-  elif (( $rez > 600 )); then
+  elif (( $rez > $min_720 )); then
     echo "720p"
-  elif (( $rez > 400 )); then
+  elif (( $rez > $min_480 )); then
     echo "480p"
-  elif (( $rez > 320 )); then
-    echo "360p"
+  elif (( $rez > $min_320 )); then
+    echo "320p"
   else
     echo "240p"
   fi
@@ -120,13 +145,15 @@ EnsureRezTag() {
   local tags="$2"
   local override="$3"
   
-  if [ ! "$(echo "$tags" | grep -E '\b[0-9]{3,4}p')" ] && \
-     [ ! "$(echo "$tags" | grep -E '\b[2468]k')" ]; then
+  if [ -z "$tags" ]; then
     rez="$(GetResolution "$filename")"
-    [ "$tags" ] && echo -n "$tags $rez" || echo -n "$rez"
-    return 0
+    [ "$?" == 0 ] && echo -n "$rez" || return $?
+  elif [ ! "$(echo "$tags" | grep -E '\b[0-9]{3,4}p|\b[2468]k')" ]; then
+    rez="$(GetResolution "$filename")"
+    [ "$?" == 0 ] && echo -n "$tags $rez" || return $?
   elif [ "$override" ]; then
     rez="$(GetResolution "$filename")"
+    [ "$?" != 0 ] && return $?
     # Remove old rez tag
     tags="$(echo "$tags" | sed -E 's/(\b[0-9]{3,4}p|\b[2468]k)//')"
     # Add new rez tag
@@ -183,6 +210,7 @@ NormalizeTags() {
   
   # Add a resolution tag if one doesn't already exist
   tags="$(EnsureRezTag "$file" "$tags" "$rez_override")"
+  [ "$?" != 0 ] && continue
 
   # TODO: MOVE TO PYTHON
   # Remove any duplicated tags after the replacements
