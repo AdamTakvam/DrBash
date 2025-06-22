@@ -56,7 +56,7 @@ SourceConfigFile() {
 HasSudo() {
   # If the user is in the 'sudo' or 'root' groups, then they can execute the 'sudo' command
   if [ "$(groups | grep -E '\ssudo\s|\sroot\s')" ]; then
-    echo "yes"
+    echo "sudo"
     return 0 
   else
     return 1
@@ -72,7 +72,7 @@ alias CanSudo='HasSudo'
 #             1 Current user is not root
 IsRoot() {
   if [ "$(whoami)" == "root" ]; then
-    echo "yes"
+    echo "root"
     return 0 
   else
     return 1
@@ -80,16 +80,42 @@ IsRoot() {
 }
 export -f IsRoot
 
-# Checks whether the current script instance is running within the context of a live, interactive user session 
-#   or via some automated process like cron or systemd or whatever.
-# - stdout : Some text if session is interactive, otherwise nothing
-# - retval : 0 if interactive, 1 otherwise
-IsInteractive() {
+# Checks whether the current script instance is running within the context of a piped output chain. 
+# - stdout : Non-null if session is piped
+# - retval : 0 if piped, 1 otherwise
+IsPiped() {
   if [ -t 1 ] ; then 
-    echo "interactive"
+    return 1
+  else
+    echo "piped"
+    return 0
+  fi
+}
+
+# Checks whether the current script instance is being sourced vs executed. 
+# - stdout : Non-null if session is soourced
+# - retval : 0 if sourced, 1 otherwise
+IsSourced() {
+  if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    echo "sourced"
     return 0
   else
     return 1
+  fi
+}
+
+# Determines whether this script is being invoked interactively by a user 
+#   or via another script 
+#   or in a piped command chain
+# Only intended to be used by scripts that are not intended to be sourced.
+# - stdout : Non-null is this script session is interactive. 
+# - retval : 0 if interactive, 1 otherwise
+IsInteractive() {
+  if [ "$(IsPiped)" ] || [ "$(IsSourced)" ]; then
+    return 1
+  else
+    echo "interactive"
+    return 0
   fi
 }
 
