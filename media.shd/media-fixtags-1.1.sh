@@ -210,7 +210,7 @@ NormalizeTags() {
   
   # Add a resolution tag if one doesn't already exist
   tags="$(EnsureRezTag "$file" "$tags" "$rez_override")"
-  [ "$?" != 0 ] && continue
+  [ "$?" != 0 ] || [ -z "$tags" ] && return 1 
 
   # TODO: MOVE TO PYTHON
   # Remove any duplicated tags after the replacements
@@ -233,195 +233,127 @@ NormalizeTags() {
   return 0
 }
 
-# Parse command line args
-for p in "$@"; do
-  case "$p" in
-    -h | --help | ?)
-      PrintHelp; exit 0 ;;
-    -st)
-      LogEnableDebug
-      testMode=1 ;;
-    -s)
-      LogEnableDebug ;;
-    -r)
-      rezOverride=1 ;;
-    -fs)
-      forceShortRun=1 ;;
-    -fl)
-      forceLongRun=1 ;;
-    -v | -vv | -q)
-      ;; # Handled by "parent class": logger.sh
-    -*)
-      LogError "ERROR: Option not recognized: $p"
-      exit 1 ;;
-    *)
-      trimPatterns+=("$p") ;;
-  esac
-done
+ParseCLI() {
+  # Parse command line args
+  for p in "$@"; do
+    case "$p" in
+      -h | --help | ?)
+        PrintHelp; exit 0 ;;
+      -st)
+        LogEnableDebug
+        testMode=1 ;;
+      -s)
+        LogEnableDebug ;;
+      -r)
+        rezOverride=1 ;;
+      -fs)
+        forceShortRun=1 ;;
+      -fl)
+        forceLongRun=1 ;;
+      -v | -vv | -q)
+        ;; # Handled by "parent class": logger.sh
+      -*)
+        LogError "ERROR: Option not recognized: $p"
+        exit 1 ;;
+      *)
+        trimPatterns+=("$p") ;;
+    esac
+  done
+  
+  # You can't shut me up that easily!
+  if [ "$(LogQuietEnabled)" ]; then
+    unset QUIET
+    LogError "Quiet mode not supported!"
+    exit 1
+  fi
+  
+  [ $rezOverride ] && Log "Overriding resolution tags on all files."
+  LogDebug "Simulation Mode: No changes will be written to disk."
+} 
 
-# You can't shut me up that easily!
-if [ "$(LogQuietEnabled)" ]; then
-  unset QUIET
-  LogError "Quiet mode not supported!"
-  exit 1
-fi
-
-[ $rezOverride ] && Log "Overriding resolution tags on all files."
-LogDebug "Simulation Mode: No changes will be written to disk."
-
-# Load the tagfixes data file
-declare tagFixesFile="$USERDATA/$APPNAME-tagfixes.shdata"
 declare -A TAGFIXES=()
 
-if [ -r "$tagFixesFile" ]; then
-  declare -Ar TAGFIXES="$(cat "$tagFixesFile")"
-  LogVerbose "TagFixes: ${#TAGFIXES[@]}"
-else
-  LogError "Tag fixes data file does not exist or not readable: $tagFixesFile"
-  exit 30
-fi
-
-#declare -Ar TAGFIXES=( \
-#  ["\.+"]="." \
-#  ["(adam\.fav|fav\.adam)"]="fav" \
-#  ["(adam\.q|q\.adam)"]="q" \
-#  ["compilation"]="comp" \
-#  ["male\."]="m." \
-#  ["(female\.|fem\.)"]="f." \
-#  ["m\.f\."]="mf." \
-#  ["\.orgy"]=".sex" \
-#  ["\s(orgy|group.sex)\s"]=" m+f+.sex " \
-#  ["\sgangbang\s"]=" m+f.sex " \
-#  ["\.masturbation"]=".mast" \
-#  ["\smasturbation\s"]=" m.mast " \
-#  ["\smast\s"]=" m.mast " \
-#  ["\s(vag\.sex|v\.sex|vag|sex)\s"]=" mf.sex " \
-#  ["(\.oral\.sex|\.oral)\s"]=".o.sex " \
-#  ["\b(anal\.only\.sex|anal\.only\s)"]="ao.sex" \
-#  ["(\.anal\.sex|\.anal)\s"]=".a.sex " \
-#  ["(\brough\.|\bhard\.)"]="r." \
-#  ["\s(anal\.sex|anal|f\.a\.sex|a\.sex)\s"]=" mf.a.sex " \
-#  ["\soral\s"]=" fm.o.sex " \
-#  ["\banal\."]="a." \
-#  ["\boral\."]="o." \
-#  ["\scum\s"]=" m.cum " \
-#  ["\s(sex|mf)\s"]=" mf.sex " \
-#  ["\s(fm\.oral|m\.oral|fm)\s"]=" fm.o.sex " \
-#  ["\smmf\s"]=" mmf.sex " \
-#  ["\smff\s"]=" mff.sex " \
-#  ["\smfm\s"]=" mfm.sex " \
-#  ["\sdp\s"]=" mmf.dp.a.sex " \
-#  ["\sdap\s"]=" mmf.dap.a.sex " \
-#  ["\sdvp\s"]=" mmf.dvp.sex " \
-#  ["\s(tp|airtight)\s"]=" mmmf.tp.a.sex " \
-#  ["\stap\s"]=" mmmf.tap.a.sex " \
-#  ["\stvp\s"]=" mmmf.tvp.sex " \
-#  ["\sblowjob\s"]=" fm.o.sex " \
-#  ["FemalePOV"]="FPOV" \
-#  ["\s(trans|tranny|ts)\s"]=" tg " \
-#  ["\.com\s"]="_com " \
-#  ["cum\.(into|in)\.(vag|pussy)"]="civ" \
-#  ["cum\.on\.(vag|pussy)"]="cov" \
-#  ["cum\.(into|in)\.ass"]="cia" \
-#  ["cum\.on\.ass"]="coa" \
-#  ["cum\.on\.(body|tits)"]="cob" \
-#  ["cum\.on\.face"]="cof" \
-#  ["cum\.on\.self"]="cos" \
-#  ["cum\.(into|in)\.mouth"]="cim" \
-#  ["(pretty\.|sexy\.)"]="hot." \
-#  ["eye\.contact"]="eye_contact" \
-#  ["dirty\.talk"]="dirty_talk" \
-#  ["glory\.hole"]="glory_hole" \
-#  ["milking\.table"]="milking_table" \
-#  ["cum\.swap"]="cum_swap" \
-#  ["mental\.breakdown"]="mental_breakdown" \
-#  ["cuckold"]="cuck" \
-#  ["human\.fucktoy"]="sex_slave.humiliation" \
-#  ["ass\.flower"]="prolapse" \
-#  ["\s(face\.fucking|deepthroat)\s"]=" mf.r.o.sex " \
-#  ["high\.energy"]="high_energy" \
-#  ["fast\.switching"]="fast_switching" \
-#  ["(voice\.over|voice_over|narration|narrated)"]="narr" \
-#  ["cock\.hero"]="cock_hero" \
-#  ["(no\.stroke\.meter|no\.metronome)"]="no_metronome" \
-#  ["\sfake\."]=" faux." \
-#  ["dance\s"]="dancing " \
-#  ["strip\s"]="stripping " \
-#  ["tease\s"]="teasing " \
-#  ["cum\.eating"]="eating.cum" \
-#  ["creampie\.eating"]="eating.creampie" \
-#  ["cum\.farting"]="farting.cum" \
-#  ["dick\.closeup"]="closeup.dick" )
+ReadConfig() {
+  # Load the tagfixes data file
+  declare tagFixesFile="$USERDATA/$APPNAME-tagfixes.shdata"
+  
+  if [ -r "$tagFixesFile" ]; then
+    declare -Ar TAGFIXES="$(cat "$tagFixesFile")"
+    LogVerbose "TagFixes: ${#TAGFIXES[@]}"
+  else
+    LogError "Tag fixes data file does not exist or not readable: $tagFixesFile"
+    read -n1 -p "Do you want to continue with just resolution fixing? [y/N]? " choice; echo
+    [ "${choice,,}" == 'y' ] || exit 30
+  fi
+}
 
 declare -a fileSet
 declare -r LastRunFileExt="lastrun"
 declare -r LastRunFile=".$APPNAME.$LastRunFileExt"
 
-failReason="<unknown>"
-successReason="<unknown>"
-if [ $forceLongRun ]; then
-  failReason="long run was forced by command-line parameter."
-elif [ ! -e "$LastRunFile" ];then 
-  failReason="$LastRunFile does not exist."
-elif [ $forceShortRun ]; then
-  successReason="short run was forced by command-line parameter."
-  shortRun='y'
-elif [ "$(cat $LastRunFile)" == "${trimPatterns[*]}" ]; then
-  successReason="$LastRunFile exists and its contents match the current run parameters."
-  shortRun='y'
-else
-  failReason="the requested text to remove does not match what was previously specified.\nPrevious: $(cat $LastRunFile)\nCurrent:  ${trimPatterns[*]}"
-fi
-
-if [ "$testMode" ]; then
-  declare -r testFilePrefix='='
-
-  IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f -name "$testFilePrefix*" | sed 's/^\.\///'))
-  LogDebug "--- Running in Testing Mode ---"
+PrepareForRun() {
+  failReason="<unknown>"
+  successReason="<unknown>"
+  if [ $forceLongRun ]; then
+    failReason="long run was forced by command-line parameter."
+  elif [ ! -e "$LastRunFile" ];then 
+    failReason="$LastRunFile does not exist."
+  elif [ $forceShortRun ]; then
+    successReason="short run was forced by command-line parameter."
+    shortRun='y'
+  elif [ "$(cat $LastRunFile)" == "${trimPatterns[*]}" ]; then
+    successReason="$LastRunFile exists and its contents match the current run parameters."
+    shortRun='y'
+  else
+    failReason="the requested text to remove does not match what was previously specified.\nPrevious: $(cat $LastRunFile)\nCurrent:  ${trimPatterns[*]}"
+  fi
   
-  for tfile in "${fileSet[@]}"; do
-    LogDebug "Found Test File: $tfile"
-  done
-elif [ $shortRun ]; then
-  Log "Performing abbreviated run because $successReason"
-  # The sed part removes the leading ./ from the filename
-  IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f -newer "$LastRunFile" | sed 's/^\.\///'))
-else
-  LogError "Cannot perform abbreviated run because $failReason"
-  IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f | sed 's/^\.\///'))
-fi
-
-LogVerbose "Found ${#fileSet[*]} files..."
-
-if [ ${#fileSet[*]} -gt 100 ]; then
-  Log "Target file count: ${#fileSet[*]}"
-  Log -n "Are you sure you want to continue [Y/n] (10s)? " 
-  read -n 1 -t 10 cont; echo
-  [ "${cont,,}" == 'n' ] && exit 0
-fi
+  if [ "$testMode" ]; then
+    declare -r testFilePrefix='='
+  
+    IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f -name "$testFilePrefix*" | sed 's/^\.\///'))
+    LogDebug "--- Running in Testing Mode ---"
+    
+    for tfile in "${fileSet[@]}"; do
+      LogDebug "Found Test File: $tfile"
+    done
+  elif [ $shortRun ]; then
+    Log "Performing abbreviated run because $successReason"
+    # The sed part removes the leading ./ from the filename
+    IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f -newer "$LastRunFile" | sed 's/^\.\///'))
+  else
+    LogError "Cannot perform abbreviated run because $failReason"
+    IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f | sed 's/^\.\///'))
+  fi
+  
+  LogVerbose "Found ${#fileSet[*]} files..."
+  
+  if [ ${#fileSet[*]} -gt 100 ]; then
+    Log "Target file count: ${#fileSet[*]}"
+    Log -n "Are you sure you want to continue [Y/n] (10s)? " 
+    read -n 1 -t 10 cont; echo
+    [ "${cont,,}" == 'n' ] && exit 0
+  fi
+}
 
 declare -l doFileOp='y' prompt='y'
 declare -i renameCount=0
 
-#
-# --- FILE LOOP ---
-#
-for (( fileIndex=0; fileIndex < ${#fileSet[@]}; fileIndex++ )) 
-do
+FixTags() {
   filename="${fileSet[$fileIndex]}"
 
   # There are some files we need to ignore
-  [ -e "$filename" ] || continue  # Hack around bash bugs
-  [ ${#filename} -lt 5 ] && continue
-  [[ "$filename" =~ .$LastRunFileExt$ ]] && continue;
+  [ -e "$filename" ] || return 0 # Hack around bash bugs
+  [ ${#filename} -lt 5 ] && return 0
+  [[ "$filename" =~ .$LastRunFileExt$ ]] && return 0
 
   newFilename="$(NormalizeTags "$filename" $rezOverride)"
-  [ $? ] || continue
+  [ "$?" == 0 ] || return 1 
   
   # Sanity check
   [ -z "$newFilename" ] && { LogError "Internal Error: NormalizeTags() returned a null filename!"; exit 99; }
 
-  LogDebug "Cur file name = $filename\nNew file name = $newFilename"
+  LogDebug "Current file name = $filename\nNew file name = $newFilename"
   
   if [ "$newFilename" != "$filename" ]; then
     
@@ -462,9 +394,30 @@ do
       [ $? == 0 ] && (( renameCount++ ))
     fi
   fi
-done
-      
-# Manage the "last run" file marker
-touch $LastRunFile
+}
 
-Log "Files renamed: $renameCount"
+WrapUp() {
+  local -i errorCode="$1"
+
+  if [ "$errorCode" == 0 ]; then
+    # Manage the "last run" file marker
+    touch $LastRunFile
+  fi
+
+  Log "Files renamed: $renameCount"
+}
+
+# if [ ! "$(IsSourced)" ]; then
+  ParseCLI "$@"
+  ReadConfig
+  PrepareForRun
+
+  # --- FILE LOOP ---
+  local -i retVal=0
+  for (( fileIndex=0; fileIndex < ${#fileSet[@]}; fileIndex++ )); do
+    FixTags
+    (( retVal |= $? ))
+  done
+
+  WrapUp $retVal
+## fi
