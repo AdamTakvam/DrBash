@@ -128,7 +128,7 @@ CanRun() {
 #             1   Specified executable could not be located
 #             99  No file name was passed in
 _Run_FindCmd() {
-  local -r FNAME="Run_FindCmd()"
+  local -r FNAME="_Run_FindCmd()"
 
   [ -z "$1" ] && return 99
 #  LogDebugError "$FNAME: \$1 = $1"

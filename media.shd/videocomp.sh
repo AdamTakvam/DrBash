@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/general.sh"
+source "${USERLIB:-$HOME/lib}/run.sh"
 source "${USERLIB:-$HOME/lib}/arrays.sh"
 
 CanRun videoinfo
