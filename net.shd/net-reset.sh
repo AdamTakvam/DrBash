@@ -1,7 +1,7 @@
 #!/bin/bash
 
-source ~/lib/modules/general.shlib
-source ~/lib/modules/net.shlib
+source ~/lib/modules/general.sh
+source ~/lib/modules/net.sh
 
 printHelp () {
   echo "Help!"

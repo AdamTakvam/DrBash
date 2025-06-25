@@ -1,5 +1,5 @@
-source ~/lib/modules/general.shlib
-source ~/lib/modules/net-mn-utils.shlib
+source ~/lib/modules/general.sh
+source ~/lib/modules/net-mn-utils.sh
 
 printHelp() {
   echo "Uses NetworkManager to create a logical bonded interface across the physical interfaces specified."

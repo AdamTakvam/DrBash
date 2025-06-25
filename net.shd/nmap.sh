@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/general.shlib"
+source "${USERLIB:-$HOME/lib}/general.sh"
 Require nmap
 
 declare -r APPNAME='nmap'

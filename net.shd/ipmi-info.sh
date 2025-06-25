@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-lib}/general.shlib"
+source "${USERLIB:-lib}/general.sh"
 Require ipmitool
 
 PrintHelp()
