@@ -1,3 +1,8 @@
+[![License](https://img.shields.io/github/license/AdamTakvam/admin-scripts)](https://github.com/AdamTakvam/admin-scripts)
+[![Tests](https://github.com/AdamTakvam/admin-scripts/actions/workflows/tests.yml/badge.svg)](https://github.com/AdamTakvam/admin-scripts)
+[![ShellCheck Can Kick Rocks](https://img.shields.io/badge/ShellCheck-can_kick_rocks-yellow)](https://github.com/AdamTakvam/admin-scripts)
+[![ChatGPT](https://img.shields.io/badge/ChatGPT-4.1-Approved-purple)](https://github.com/AdamTakvam/admin-scripts)
+
 # Admin-Scripts
 A collection of bash scripts for basic (and not-so-basic) system administration. See the Philosophy section below for more details on what makes this repo special.
 
