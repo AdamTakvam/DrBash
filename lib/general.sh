@@ -71,7 +71,7 @@ alias CanSudo='HasSudo'
 # - Returns:  0 Current user is root
 #             1 Current user is not root
 IsRoot() {
-  if [ "$(whoami)" == "root" ]; then
+  if [ "$(whoami)" == 'root' ]; then
     echo "root"
     return 0 
   else
@@ -84,7 +84,7 @@ export -f IsRoot
 # - stdout : Non-null if session is piped
 # - retval : 0 if piped, 1 otherwise
 IsPiped() {
-  if [ -t 1 ] ; then 
+  if [ -t 1 ]; then 
     return 1
   else
     echo "piped"
@@ -93,25 +93,31 @@ IsPiped() {
 }
 
 # Checks whether the current script instance is being sourced vs executed. 
+# + $1     = The value of $0 in the executing context. Should be just: "$0"
 # - stdout : Non-null if session is soourced
 # - retval : 0 if sourced, 1 otherwise
 IsSourced() {
-  if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-    echo "sourced"
-    return 0
-  else
-    return 1
-  fi
+  exeName="${1:-$0}"
+
+  # The executable name may be anywhere in the array 
+  #   depending on howe many levels of sourcing or function calls are happening
+  for bs in "${BASH_SOURCE[@]}"; do
+    [[ "$bs" == "$exeName" ]] && return 1
+  done
+
+  echo "sourced"
+  return 0
 }
 
 # Determines whether this script is being invoked interactively by a user 
 #   or via another script 
 #   or in a piped command chain
 # Only intended to be used by scripts that are not intended to be sourced.
+# + $1     = The value of $0 in the executing context. Should be just: "$0"
 # - stdout : Non-null is this script session is interactive. 
 # - retval : 0 if interactive, 1 otherwise
 IsInteractive() {
-  if [ "$(IsPiped)" ] || [ "$(IsSourced)" ]; then
+  if [ "$(IsPiped)" ] || [ "$(IsSourced "$1")" ]; then
     return 1
   else
     echo "interactive"

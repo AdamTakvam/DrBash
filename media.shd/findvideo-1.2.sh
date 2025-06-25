@@ -39,12 +39,18 @@ PrintHelp() {
   Log "\t\tNote: PATTERN is case-insensitive."
   Log "\t\tNote: $ is not supported in regular expressions."
   Log
+  LogHeader "Environment Variables:"
+  LogTable "\tFV_ALWAYS_SEARCH_REPO\t1 = Always search the configured repository directory regardless of where the command is invoked.
+  \t\t0 or unset = Search in the current directory.
+  \t\tNote: The -d flag will override this setting.
+  \tMEDIAREPO\tThe path to the repository, if FV_ALWAYS_SEARCH_REPO=1"
+  Log
   LogHeader "Notes:"
   LogTable "\t1.\tIf you have sudo privileges, then all file operations will be executed as root.
   \t\tWhen this is the case, the message \"Running with elevated privileges\" is displayed in green.
   \t\tIf this behavior is not desired, then run this script as a less privileged user.
   \t2.\tIf the output of this script is redirected anywhere (e.g $APPNAME > media.txt) or if you source this script from another (IYKYK), then interactive mode is disabled even if you specify the -i command-line option.
-  \t3.\tEven thouggh this command was created for use in curating a media file collection, there is nothing about it that limits it to only media files. It should work great with any arbitrary collection of files."
+  \t3.\tEven though this command was created for use in curating a media file collection, there is nothing about it that limits it to only media files. It should work great with any arbitrary collection of files."
   Log
   LogHeader "Command Examples:"
   Log "\tSearches that will find \"The Chronicles of Narnia: The Lion, The Witch, And The Wardrobe.mp4\":"
@@ -309,48 +315,55 @@ ParseCLI() {
   fi
 
   for p in "$@"; do
-    if [[ "$p" =~ ^- ]]; then
-      case "$p" in
-        -h)
-          PrintHelp
-          exit 0 ;;
-        -i)
-          interactive=1 ;;
-        -I)
-          interactive=0 ;;
-        -s)
-          searchSubs=1 ;;
-        -S)
-          searchSubs=0 ;;
-        -d)
-          rootDir="${p#*=}" ;;
-        *($(LogParamsCase))* )
-          : ;;
-        *)
-          LogError "Invalid parameter: $p"
-          PrintHelp
-          exit 1
-      esac
-    else
-      SEARCHTERMS+=("$p")
-    fi
+    case "$p" in
+      -h)
+        PrintHelp
+        exit 0 ;;
+      -i)
+        interactive=1 ;;
+      -I)
+        interactive=0 ;;
+      -s)
+        searchSubs=1 ;;
+      -S)
+        searchSubs=0 ;;
+      -d*)
+        rootDir="${p#*=}" ;;
+      -*)
+        ;; # do nothing
+      *)
+        SEARCHTERMS+=("$p") ;;
+    esac
   done
   
+  [ ${#SEARCHTERMS[@]} == 0 ] && { PrintHelp; exit 1; }
+
+  if [ "$FV_ALWAYS_SEARCH_REPO" == '1' ] && [ -d "$MEDIAREPO" ] && [ "$rootDir" == '.' ]; then
+    rootDir="$MEDIAREPO/"
+  elif [ "$rootDir" == '.' ]; then
+    roodDir="$PWD"
+  fi
+
+  [ "$searchSubs" == 1 ] && r='recursively '
+  Log "Searching ${r}in: $rootDir"
+
   # Disable interactive mode if our output is being piped to another command.
-  if [ ! -t 1 ]; then 
+  IsPiped 
+  if [ "$?" == 0 ]; then 
     LogVerbose "Disabling interactive mode because stdout appears to be redirected"
     interactive=0
   fi
 
   # Disable interactive mode if we're being sourced by another script.
-  if [ "$BASH_SOURCE" != "$0" ]; then
-    LogVerbose "Disabling interactive mode because we appear to be sourced ("$BASH_SOURCE" != "$0")"
+  IsSourced "$0" 
+  if [ "$?" == 0 ]; then
+    LogVerbose "Disabling interactive mode because we appear to be sourced ("${BASH_SOURCE[0]}" != "$0")"
     interactive=0
   fi
+  
+  # Now make $interactive read-only
   declare -r interactive
   
-  [ ${#SEARCHTERMS[*]} == 0 ] && { PrintHelp; exit 1; }
-#  declare -r SEARCHTERMS
   LogVerbose "Search Terms (ParseCLI) = $(SerializeArray -q -d=, -dS SEARCHTERMS)"
 }
 
