@@ -87,7 +87,6 @@ IsPiped() {
   if [ -t 1 ]; then 
     return 1
   else
-    echo "piped"
     return 0
   fi
 }

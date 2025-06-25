@@ -265,7 +265,7 @@ ShowMenu() {
 #  LogDebug "$FNAME.#indices = ${#indices[@]}"
 #  LogDebug "$FNAME.indices() = $(SerializeArray -d=, -dS indices)"
 
-  awkStr="$(echo "${indStr}" | awk '{ print $1 "\n" $2 }')"
+awkStr="$(echo "${indStr}" | awk '{ for(i=1; i<=NF; i++) { print $i }}')"
   LogDebug "$FNAME.awkStr = $awkStr"
   IFS=$'\n' indices=($awkStr)
   LogDebug "$FNAME.#indices = ${#indices[@]}"
@@ -339,28 +339,25 @@ ParseCLI() {
   [ ${#SEARCHTERMS[@]} == 0 ] && { PrintHelp; exit 1; }
 
   if [ "$FV_ALWAYS_SEARCH_REPO" == '1' ] && [ -d "$MEDIAREPO" ] && [ "$rootDir" == '.' ]; then
-    rootDir="$MEDIAREPO/"
+    rootDir="$MEDIAREPO"
   elif [ "$rootDir" == '.' ]; then
     roodDir="$PWD"
   fi
 
+  # Put the trailing slash right back on so that find's bitch ass will work correctly
+  [ "${rootDir: -1}" == '/' ] || rootDir+=/
+
+  # Call it a recap or call it a warning...
   [ "$searchSubs" == 1 ] && r='recursively '
   Log "Searching ${r}in: $rootDir"
 
   # Disable interactive mode if our output is being piped to another command.
-  IsPiped 
+  IsPiped
   if [ "$?" == 0 ]; then 
-    LogVerbose "Disabling interactive mode because stdout appears to be redirected"
+    LogVerboseError "Disabling interactive mode because stdout appears to be redirected."
     interactive=0
   fi
 
-  # Disable interactive mode if we're being sourced by another script.
-  IsSourced "$0" 
-  if [ "$?" == 0 ]; then
-    LogVerbose "Disabling interactive mode because we appear to be sourced ("${BASH_SOURCE[0]}" != "$0")"
-    interactive=0
-  fi
-  
   # Now make $interactive read-only
   declare -r interactive
   
@@ -383,10 +380,13 @@ InteractiveLoop() {
   done
 }
 
-ParseCLI "$@"
+# If sourced, don't do jack shit! 
+if [ ! "$(IsSourced "$0")" ]; then
+  ParseCLI "$@"
 
-if [ $interactive == 0 ]; then
-  DisplayResults
-else
-  InteractiveLoop
+  if [ $interactive == 0 ]; then
+    DisplayResults
+  else
+    InteractiveLoop
+  fi
 fi
