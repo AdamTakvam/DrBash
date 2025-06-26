@@ -1,0 +1,19 @@
+name: Run logging tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-logging:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Make test script executable
+        run: chmod +x lib/logging.tests.sh
+
+      - name: Run logging tests
+        run: ./lib/logging.tests.sh
+
