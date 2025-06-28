@@ -4,7 +4,7 @@
 [![ChatGPT](https://img.shields.io/badge/ChatGPT-4.1--Approved-blueviolet?style=flat)](https://github.com/AdamTakvam/admin-scripts)
 
 
-# Admin-Scripts
+# Dr. Bash
 A collection of bash scripts for basic (and not-so-basic) system administration. See the Philosophy section below for more details on what makes this repo special.
 
 ## ASSumptions 
