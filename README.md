@@ -15,10 +15,21 @@ So, if you find a bug and you're running something else, you must verify it on t
 Basically, I'm just one guy and I'm not assuming that anyone will fall in love with a collection of shell scripts to the point that they're motivated to make a big deal out of it by supporting everything under the sun. So it is what it is.
 
 ## Installation
-* There is no apt package for this repo. These are scripts; the source is the executable.
+
+### For users of this project:
+* Download one of the two release types:
+  * Full = Everything
+  * Lite = Everything minus media.shd/
+* Unzip the downloaded file
+* Run ./install
+* Follow any additional instructions that the installer may provide
+
+### For contributors to this project:
 * Clone this repo then run the ./mkbinlink script to create symlinks in `~/bin` to the executable scripts in this repo.
 * Ensure that '~/bin/' is in your path and Bob's your uncle. (I'm not really that old; I just think it's funny)
 * Refer to the Scripts section below for a summaery of what the most significant scripts do.
+* Check for README.md files in the subdirectories for a technical description of every single script
+  * If no README files exist in the subdirectoruies, that's because the planned tool to generate them has not been built yet
 
 ## Usage
 How the scripts are used varies depending on the directory they are found in:
@@ -28,8 +39,8 @@ How the scripts are used varies depending on the directory they are found in:
 * env: The scripts in this subdirectory are intended to be sourced into your environment to be used. I suggest adding a `for` loop (warning: the `source` command doesn't always work how you might expect with wildcards) to your `.bashrc` so that they will always be available as any other built-in commands. Here's the copy-pasta for you:
 
 ```
-for awesomeShellScript in ~/src/admin-scripts/env/*; do
-  source $awesomeShellScript
+for script in /usr/local/env/*; do
+  source $script
 done
 ```
 
