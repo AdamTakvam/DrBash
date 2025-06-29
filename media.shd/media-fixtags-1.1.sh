@@ -33,6 +33,7 @@ PrintHelp () {
 $(PrintLogHelp -q=0)
 \t-s\tSimulate what would be done in a real run (equivalent to -vv).
 \t-r\tReevaluate resolution tags for all files
+\t-y\tUnattended mode. Assume default responses to all prompts.
 \t-st\tDeveloper testing mode.
 \t-fs\tForce short run (since .lastrun file modification date).
 \t-fl\tForce long run (ignore .lastrun file)."
@@ -107,11 +108,11 @@ GetResolution() {
   declare -a rezArr
   IFS=$'\n' rezArr=($(exiftool -ImageHeight -ImageWidth "$file" | awk '{ printf $4"\n" }'))
   if [ "${#rezArr[@]}" != 2 ]; then
-    LogError "Error reading resolution from: $file (no data)"
+    LogError "\n$(ColorText YELLOW "Unable to read resolution from: $file (no data)")"
     return 1
   fi
 
-  LogVerboseError "Resolution: ${rezArr[0]} x ${rezArr[1]}"
+  LogVerboseError "\nResolution: ${rezArr[0]} x ${rezArr[1]}"
 
   let rez=$(( ${rezArr[0]} * ${rezArr[1]} ))
 
@@ -187,11 +188,11 @@ NormalizeTags() {
   LogDebugError "Extension = $fileExt"
 
   if [ ${#fileParts[*]} -gt 2 ] || [ -z "$title" ]; then
-    LogErrorTee "$(ColorText LRED "ERROR: Invalid file name: $file\n\tManual intervention required to remove extra square brackets!")"
+    LogErrorTee "\n$(ColorText LRED "ERROR: Invalid file name: $file\n\tManual intervention required to remove extra square brackets!")"
     return 1
   fi
 
-  LogDebugError -n "a "
+  # LogDebugError -n "a "
 
   # Reminder: "${arr[*]}"  <-- Serialization
   #           "${arr[@]}"  <-- Iteration
@@ -206,7 +207,7 @@ NormalizeTags() {
     unset tagfix
   fi
 
-  LogDebugError -n "b "
+  # LogDebugError -n "b "
   
   # Add a resolution tag if one doesn't already exist
   tags="$(EnsureRezTag "$file" "$tags" "$rez_override")"
@@ -216,7 +217,7 @@ NormalizeTags() {
   # Remove any duplicated tags after the replacements
   #tags="$(DedupeTags "$tags")"
 
-  LogDebugError -n "c " 
+  # LogDebugError -n "c " 
   
   # Recombine media name and tags
   local newFilename="${title}"
@@ -226,8 +227,8 @@ NormalizeTags() {
   # Remove any duplicated spaces that may have resulted from deletions
   newFilename="$(echo "$newFilename" | sed -E 's/\s+/ /g' | sed -E 's/(^\s+|\s+$)//g')"
 
-  LogDebugError "d"
-  LogDebugError "newFilename (in function) = $newFilename"
+  # LogDebugError "d"
+  LogDebugError "\nnewFilename (in function) = $newFilename"
 
   echo -n "$newFilename"
   return 0
@@ -241,15 +242,17 @@ ParseCLI() {
         PrintHelp; exit 0 ;;
       -st)
         LogEnableDebug
-        testMode=1 ;;
+        let testMode=1 ;;
       -s)
         LogEnableDebug ;;
       -r)
-        rezOverride=1 ;;
+        let rezOverride=1 ;;
       -fs)
-        forceShortRun=1 ;;
+        let forceShortRun=1 ;;
       -fl)
-        forceLongRun=1 ;;
+        let forceLongRun=1 ;;
+      -y)
+        let unattended=1 ;;
       -v | -vv | -q)
         ;; # Handled by "parent class": logger.sh
       -*)
@@ -282,7 +285,7 @@ ReadConfig() {
     LogVerbose "TagFixes: ${#TAGFIXES[@]}"
   else
     LogError "Tag fixes data file does not exist or not readable: $tagFixesFile"
-    read -n1 -p "Do you want to continue with just resolution fixing? [y/N]? " choice; echo
+    [ $unattended == 1 ] || read -n1 -p "Do you want to continue with just resolution fixing? [y/N]? " choice; echo
     [ "${choice,,}" == 'y' ] || exit 30
   fi
 }
@@ -330,8 +333,7 @@ PrepareForRun() {
   
   if [ ${#fileSet[*]} -gt 100 ]; then
     Log "Target file count: ${#fileSet[*]}"
-    Log -n "Are you sure you want to continue [Y/n] (10s)? " 
-    read -n 1 -t 10 cont; echo
+    [ $unattended == 1 ] || read -n1 -t10 -p "Are you sure you want to continue [Y/n] (10s)? " cont; echo
     [ "${cont,,}" == 'n' ] && exit 0
   fi
 }
@@ -340,7 +342,7 @@ declare -l doFileOp='y' prompt='y'
 declare -i renameCount=0
 
 FixTags() {
-  filename="${fileSet[$fileIndex]}"
+  filename="$1"
 
   # There are some files we need to ignore
   [ -e "$filename" ] || return 0 # Hack around bash bugs
@@ -351,16 +353,17 @@ FixTags() {
   [ "$?" == 0 ] || return 1 
   
   # Sanity check
-  [ -z "$newFilename" ] && { LogError "Internal Error: NormalizeTags() returned a null filename!"; exit 99; }
+  [ -z "$newFilename" ] && { LogError "$(ColorText YELLOW "Internal Error:") NormalizeTags() returned a null filename!"; exit 99; }
 
   LogDebug "Current file name = $filename\nNew file name = $newFilename"
   
-  if [ "$newFilename" != "$filename" ]; then
-    
+  if [ "$newFilename" == "$filename" ]; then
+    Log -n '.'
+  else
     progress=`awk -v fileIndex=$fileIndex -v numFiles=${#fileSet[@]} 'BEGIN { printf "%d%\n", (fileIndex/numFiles)*100 }'`
     progress=$(printf %3s $progress)
 
-    declare fileOpText="Rename: ${filename}\n$progress  => $(ColorText LPURPLE "$newFilename")"
+    declare fileOpText="\nRename: ${filename}\n$progress  => $(ColorText LPURPLE "$newFilename")"
     Log "$fileOpText"
     
     # Force doFileOp to 'n' if this is a simulation
@@ -371,7 +374,7 @@ FixTags() {
 
     # Prompt before performing file operation
     if [ "$prompt" != "n" ]; then
-      read -n1 -p "Perform this file operation [Y/n/a/q]? " doFileOp; echo
+      [ $unattended == 1 ] || read -n1 -p "Perform this file operation [Y/n/a/q]? " doFileOp; echo
       case $doFileOp in
         n)
           doFileOp='n' ;;
@@ -397,27 +400,41 @@ FixTags() {
 }
 
 WrapUp() {
-  local -i errorCode="$1"
+  [ -z "$1" ] && return 99
 
-  if [ "$errorCode" == 0 ]; then
+  local -n errors="$1"
+
+  # Print error report
+  local retval=0
+  if [ "${#errors[@]}" -ne 0 ]; then
+    retval=1
+    Log '\nError Files:'
+    for file in "${errors[@]}"; do
+      Log "$file"
+    done
+  else
+    Log '\nNo errors detected!'
+  fi
+
+  if [ "$retval" -eq 0 ]; then
     # Manage the "last run" file marker
-    touch $LastRunFile
+    touch "$LastRunFile"
   fi
 
   Log "Files renamed: $renameCount"
 }
 
+# Begin script execution
 # if [ ! "$(IsSourced)" ]; then
-  ParseCLI "$@"
-  ReadConfig
-  PrepareForRun
+ParseCLI "$@"
+ReadConfig
+PrepareForRun
 
-  # --- FILE LOOP ---
-  local -i retVal=0
-  for (( fileIndex=0; fileIndex < ${#fileSet[@]}; fileIndex++ )); do
-    FixTags
-    (( retVal |= $? ))
-  done
+# --- FILE LOOP ---
+declare -a errorFiles=()
+for _filename in "${fileSet[@]}"; do
+  FixTags "$_filename"
+  [ $? -ne 0 ] && errorFiles+=("$_filename")
+done
 
-  WrapUp $retVal
-## fi
+WrapUp errorFiles
