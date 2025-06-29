@@ -46,11 +46,6 @@ done
 
 * lib : These scripts are intended to be sourced by other scripts in order to provide library-like functionality.
 
-* snippets : Examples of how to do certain things, how to call the modules, or just neat bash tricks. The code in here is inttended for copy/paste usage.
-
-* installers : If a script has an external dependency on a package that does not exist in the main Debian repo, then t:noh
-ihere should be a script in here that you can run to install that dependency. For the most part, the scripts in here should just add third-party repos so that you can then just `apt-get install` what you need.
-
 # Executable Scripts
 
 To get you oriented, here is a brief overview of the most significant scripts in this repo. Other scripts you may encounter should be used with caution as they may be extremely niche or simply old and poorly maintained. Nonetheless, they should all print a help page when invoked with a '-h'. So either start there or start by just cracking them open and peeking at what is inside, whichever suits you better.
@@ -75,20 +70,36 @@ To learn about all of the options and syntactical details, run the desired scrip
 ## env/
 < See "The Environment Commands" section for more details. >
 
+## grav.shd
+A collection of commands to help automate the provisioning and use of Grav CMS. WordPress is a scam and it sucks.
+
 ## lib/
 < See "The Base Class Libraries" section for more detauils. >
 
 ## media.shd/
+A suite of utilities for managing a large library of media files. 
+Status:
+* Injest: Complete / Stable
+* Deduping: Experimental
+* Indexing: In Development
+* Search: Primitive / Stable
 
 ## net.shd/
+A set of utilities for wrestling control of your network when you have far too many network adapters.
 
 ## serial.shd/
+One word: Cisco
+But certainly can be useful for any appliance with a serial port interface.
 
 ## system.shd/
+A collection of commands to make life as a system administrator more palatable.
+
 * ad-hoc-web-server : A quick and easy web server that provides HTTP access to whatever files are in the current directory when you run the command.
 * chmodt : Adds the ability to specify whether you want chmod to act on only files or directories. Particularly useful if you don't like destroying your directory structure when recursing subdirectories. It's actually quite surprising that this is not in the command itself.
+...
 
 ## zfs.shd/
+It may be the best file system ever, but there's always room for some tweaks.
 
 # Philosophy
 
