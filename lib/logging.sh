@@ -9,28 +9,45 @@ source "${USERLIB:=$HOME/lib}/arrays.sh"
 
 ReadStdIn() {
   local input=""
-  while read -r msg; do
-    input+="$msg"
+  while read -r _msg; do
+    input+="$_msg"
   done
-  echo "$input"
+  printf "%s" "$input"
 }
 
 #
 # -------------------- Internal Use Only ---------------------------------------
 #
 _Log() {
-  local param
-  local msg
-  if [ "$1" == '--' ]; then
-    msg="$(ReadStdIn)"
-  elif [[ "$1" =~ ^- ]]; then
-    param="$1"
-    msg="$2"
-  else
-    msg="$1"
-  fi
-
-  [ "$msg" ] && echo -e $param "$msg" || echo
+  case "$1" in
+    "")
+      echo ;;
+    --)
+      _msg="$(ReadStdIn)" 
+      [ "$_msg" ] && echo -e "$_msg" ;;
+    -lr)
+      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
+                       || _msg="$2"
+      [ "$_msg" ] && printf "%${COLUMNS}s\n" "$_msg" || echo ;;
+    -lrn)
+      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
+                       || _msg="$2"
+      [ "$_msg" ] && printf "%${COLUMNS}s" "$_msg" ;;
+    -ln)
+      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
+                       || _msg="$2"
+      [ "$_msg" ] && printf "%s" "$_msg" ;;
+    -l)
+      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
+                       || _msg="$2"
+      [ "$_msg" ] && printf "%s\n" "$_msg" || echo ;;
+    -n)
+      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
+                       || _msg="$2"
+      [ "$_msg" ] && echo -e "$1" "$_msg" ;;
+    *)
+      echo -e "$1" ;;
+  esac
 }
 
 _Journal() {
@@ -104,10 +121,19 @@ export -f LogErrorTee
 # -------------------- Console Output ---------------------------------------
 #
 
-# Writes the specified message to the console only
-# + $1 = (opt) parameters to apply to the echo command. -e is already applied.
-# + $2 = The message to write (supports escaped control characters) or -- to send piped content
-# + stdin = The message to write (supports escaped control characters)
+# Writes the specified message to the console
+# Supports piped messages with or without other parameters when you specify --
+# Calling Log with no parameters will generate a newline
+# Escape sequences are interpreted by default unless you specify -l
+# + $1 = (opt) parameters to apply to the log output
+#        -- = Message is piped in
+#        -n = Suppress newline
+#        -l = Stop trying to be smart and output LITERALLY what I'm telling you!
+#        -ln = Literal value with no newline
+#        -lr = Literal and right-justified
+#        -lrn = Literal and right-justified with no newline
+# + $2 = The message to write or -- for stdin
+# + stdin = The message to write
 # - stdout = The message
 Log() {
   [ "$(LogQuietEnabled)" ] && return 0
@@ -301,10 +327,41 @@ LogHeaderError() {
   LogError "$(Log "$1" "$2" | Header --)"
 }
 
+# Logs *exactly* what you pass in with no interpretation of anything
+# + $1 = (opt) Parameter to control how the output is presented.
+#        -n = Do not inject a newline after the message
+# + $2 = The message to log
+# - stdout = Your exact message
+LogLiteral() {
+  [ "$1" == '-n' ] && Log -ln "$2" \
+                   || Log -l "$1"
+}
+
 # Print message right-justified in the console window
+# + $1 = (opt) Parameter to control how the output is presented.
+#        -n = Do not inject a newline after the message
+# + $2 = The message to log
+# - stdout = Your exact message, right-justified
 LogRight() {
-  msg="$(Log "$1")"
-  [ "$msg" ] && printf "%${COLUMNS}s" "$msg"
+  [ "$1" == '-n' ] && Log -lrn "$2" \
+                   || Log -lr "$1"
+}
+
+# Print message with an underline effect
+# Output will consume 2 rows of display
+# Line will be the same length as your text
+# + $1 = Message
+# - stdout = Your exact message with a row of dashes on the subsequent line
+LogUnderline() {
+  msg="$(Log -l "$1")" # Pass it through any applicable filters or standard formatting
+  if [ "$msg" ]; then
+    Log
+    Log -l "$msg"
+    for (( i=0; i<${#msg}; i++ )); do
+      Log -ln "${2:--}"
+    done
+    Log
+  fi
 }
 
 #
