@@ -5,28 +5,30 @@
 
 
 # Dr. Bash
-A collection of bash scripts for basic (and not-so-basic) system administration. See the Philosophy section below for more details on what makes this repo special.
+A platform for builkding professional-grade Bash scripts. We make Bash beautiful in spite of itself!
+Includes a collection of scripts for basic (and not-so-basic) system administration and a whole "thing" for managing large media file repositories. 
+See the Philosophy section below for more details on what makes this repo special.
 
 ## ASSumptions 
-These scripts are only intended to work correctly on Debian 12 with Bash 5. 
+These scripts are only intended to work correctly on Debian 12 (and derivitives thereof) with Bash 5.x. I'm not aware of any incompatibilities with Bash 4.x, but I'm not actively validating the scripts on that version, so you might run into issues. Bash 3.x is definitely not compatible.
 
-So, if you find a bug and you're running something else, you must verify it on this setup before logging it. Otherwise, it will fall under "ports" which is experimental at this time. 
+So, if you find a bug and you're running something else, you must verify it on this setup before logging it. Otherwise, it will fall under "ports" which is not really a thing unless you want to make it a thing. 
 
-Basically, I'm just one guy and I'm not assuming that anyone will fall in love with a collection of shell scripts to the point that they're motivated to make a big deal out of it by supporting everything under the sun. So it is what it is.
+Basically, I'm just one guy and I'm not assuming that anyone will fall in love with this platform or motley collection of shell scripts to the point that they're motivated to make a big deal out of it by supporting everything under the sun. So it is what it is. If I'm wrong, hey, that would be cool too!
 
 ## Installation
 
 ### For users of this project:
 * Download one of the two release types:
   * Full = Everything
-  * Lite = Everything minus media.shd/
+  * Lite = Everything minus `media.shd/`
 * Unzip the downloaded file
-* Run ./install
+* Run `./install`
 * Follow any additional instructions that the installer may provide
 
 ### For contributors to this project:
 * Clone this repo then run the ./mkbinlink script to create symlinks in `~/bin` to the executable scripts in this repo.
-* Ensure that '~/bin/' is in your path and Bob's your uncle. (I'm not really that old; I just think it's funny)
+* Ensure that `~/bin/` is in your path and Bob's your uncle. (I'm not really that old; I just think it's funny)
 * Refer to the Scripts section below for a summaery of what the most significant scripts do.
 * Check for README.md files in the subdirectories for a technical description of every single script
   * If no README files exist in the subdirectoruies, that's because the planned tool to generate them has not been built yet
@@ -34,8 +36,10 @@ Basically, I'm just one guy and I'm not assuming that anyone will fall in love w
 ## Usage
 How the scripts are used varies depending on the directory they are found in:
 
-* Root of repo: These are all top-level executable scripts. After completing the installation steps described above, you can run them by just specifying the filename without the .sh extension (as they appear in `~/bin`). These should all be relatively complete and mature top-level scripts with their own help (-h) and everything. So approach them as any other software you install via packages.
+* Root of repo: These are scripts related to packaging and installing the platform itself as well as some files to help make developing new scripts on the platform as painless as possible.
 
+* lib : These scripts are intended to be sourced by other scripts in order to provide library-like functionality.
+  
 * env: The scripts in this subdirectory are intended to be sourced into your environment to be used. I suggest adding a `for` loop (warning: the `source` command doesn't always work how you might expect with wildcards) to your `.bashrc` so that they will always be available as any other built-in commands. Here's the copy-pasta for you:
 
 ```
@@ -43,43 +47,45 @@ for script in /usr/local/env/*; do
   source $script
 done
 ```
+* *.shd/: These are scripts born of necessity related to the area of system administration indicated by the directory name. After completing the installation steps described above, you can run them by just specifying the filename without the .sh extension (as they appear in `~/bin`). These should all be relatively complete and mature top-level scripts with their own help (-h) and everything. So approach them as any other software you install via packages.
 
-* lib : These scripts are intended to be sourced by other scripts in order to provide library-like functionality.
+
+# Upcoming Features (no release date commitments)
+* Finish out the template script.
+* Get `explain_this.sh` working to generate README files dynamically for the subdirectories by pulling metadata from the scripts (like a doxygen sort of thing).
+* Create a new base library `lib/help.cs` which is anticipated to be necessary to implement `explain_this.sh` the way I want to.
+* Create and install actual manpages for this stuff.
+* Package as a `.deb` and perhaps trick someone into hosting it for me.
+* Continue development on the media management platform. I've gotten as far with it as I can with Bash and it's definitely usable in its current form. So, I started to develop the deduplication logic in Python. But I really don't have a compelling reason to learn Python, especially when I already know C# inside and out. So all future media platform development will be in C#. Sorry, not sorry.
 
 # Executable Scripts
-
-To get you oriented, here is a brief overview of the most significant scripts in this repo. Other scripts you may encounter should be used with caution as they may be extremely niche or simply old and poorly maintained. Nonetheless, they should all print a help page when invoked with a '-h'. So either start there or start by just cracking them open and peeking at what is inside, whichever suits you better.
+To get you oriented, here is a brief overview of the scripts in the root or the repo as well as the `*.shd/` subs generally. A detailed description of the `lib/` and `env/` subs can be found further down in this epic docxument.
+For informatiuon on the scripts in the `*.shd/` subs, refer to the README files in those respective subs.
+For a more detailed explanation of exactly what each script does, simply run it with the `-h` and all will be revealed.
+One near-term goal is to automate the generation of REEADME files for each of the `*.shd/` subdirectories. `lib/` and `env/` will be automated eventually, but that's a different task due to the nature of those files.
 
 Naming Convention: 
-* The directories named with a ".shd" extension contain scripts that were written on the platform. 
+* The directories named with a `.shd` extension contain scripts that were written on the platform. 
 * The directories lacking the extension are part of the platform itself.
 
-Remember, after running 'mkbinlink' you don't need to include the ".sh" extension to run any of these scripts nor do you need to be in the directory where they reside.
+Remember, after running `install` or `mkbinlink` you don't need to include the ".sh" extension to run any of these scripts nor do you need to be in the directory where they reside.
 
-To learn about all of the options and syntactical details, run the desired script with the "-h" parameter.
+To learn about all of the options and syntactical details, run the desired script with the `-h` parameter.
 
-[work in progress]
-
-## [root]/
-* debug.sh : A simple script to easily run any script you name in the bash debugger.
-* explain-this.sh : A tool that dynamically interrogates the scripts in this collection and extracts summaries of their functionality, which it then collates and displays to the user as a README-style document.
-* mkbinlink.sh : The exception to the rule. This one is intended to be run directly, ".sh" exetension and all. It makes links in the ~/bin directory for all of the executable scripts in this collection. 
-* script.template.sh : An example script that for anyone wanting to write a script leveraging this platform to be able to simply copy and get right to work with all of the platform-specific stuff already taken care of.
-* template.shd : This is a different approach to script templating. This one accomplishes much the same goal as script.template.sh, but in a different way. This template is intended to be sourced. It provides many common functions, but delegates the custom parts to the developer by way of prescribed functions that must be implemented. It is currently experimental.
-
-## env/
-< See "The Environment Commands" section for more details. >
+## /
+* debug.sh : A simple script to easily run any script you name in the bash debugger. You need to run this one directly with some ./ love because - unlike the *.shd/ scripts - this one isn't in your $PATH. [stable]
+* explain-this.sh : A tool that dynamically interrogates the scripts in this collection and extracts summaries of their functionality, which it then collates and displays to the user as a README-style document. [WIP]
+* mkbinlink.sh : Part of the installation process, but also helpful if you develop new scripts. It creates a symlink in your ~/bin/ directory pointing to the script file you indicate. It also handles file permissions, making sure your script is executable, and generally just helps ensure that you don't mess it up because it's easier than you think! Unlike the scripts in the *.shd/ subs, you've got to run this one with a full path to it. It's highly recommended to change to the repo root and give it the old ./ treatment. [stable]
+* script.template.sh : An example script that for anyone wanting to write a script leveraging this platform to be able to simply copy and get right to work with all of the platform-specific stuff already taken care of. [WIP]
+* template.shd : This is a different approach to script templating. This one accomplishes much the same goal as script.template.sh, but in a different way. This template is intended to be sourced. It provides many common functions, but delegates the custom parts to the developer by way of prescribed functions that must be implemented. It is currently experimental. [WIP]
 
 ## grav.shd
 A collection of commands to help automate the provisioning and use of Grav CMS. WordPress is a scam and it sucks.
 
-## lib/
-< See "The Base Class Libraries" section for more detauils. >
-
 ## media.shd/
-A suite of utilities for managing a large library of media files. 
+A suite of utilities for managing a large library of media files. What constitutes a "large" library? My test library stands at over 6,000 titles, so at least that many!
 Status:
-* Injest: Complete / Stable
+* Ingest: Complete / Stable
 * Deduping: Experimental
 * Indexing: In Development
 * Search: Primitive / Stable
@@ -93,10 +99,6 @@ But certainly can be useful for any appliance with a serial port interface.
 
 ## system.shd/
 A collection of commands to make life as a system administrator more palatable.
-
-* ad-hoc-web-server : A quick and easy web server that provides HTTP access to whatever files are in the current directory when you run the command.
-* chmodt : Adds the ability to specify whether you want chmod to act on only files or directories. Particularly useful if you don't like destroying your directory structure when recursing subdirectories. It's actually quite surprising that this is not in the command itself.
-...
 
 ## zfs.shd/
 It may be the best file system ever, but there's always room for some tweaks.
@@ -198,7 +200,16 @@ It is only necessary to create these if you want to use the media-related script
 * media-fixtitle-patterns.shdata - (parsed) This is a list of regular expressions (one per line) that will be removed from media filenames. This is different from delete that deletes all files with names matching the pattern. Instead this matches and removes substrings from titles.
 * setperms.conf - (sourced) Sets a few environment variables used by the setperms.sh script that you won't use, so don't worry about it.
 
+# Functional Tests
+They exist! But you'll be shocked to learn that the code coverage is pitiful and really the only file with anything resembling comprehensive coverave is `lib/logger.sh`. It's tests are located in `lib/logger.tests.sh`. To run the tests, just execute the script.
+There needs to be more of that sort of thing going on...
+
 # FAQ
+
+Q: What are derivatives of Debian?
+
+The Linux ecosystem of operating systems is organized into families. Families have a progenitor or "root distribution" that leads the way by starting witgh the Linux kernel and making all of the fundamental tooling and pathing decisions necessary to make the kernel into a full-fledged operating system. 
+Within a family, there may or may not exist derivatives of a core distro. Other distributions or "distros" put theirr own spin on the root distribution, but usually stop short of making any fundamental changes thgat would break script compatibility.
 
 Q: That is quite a big assumption that you've based these scripts on. What if I'm inclined to help expand the range of systems these scripts work on?
 
