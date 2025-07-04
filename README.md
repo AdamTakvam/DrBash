@@ -4,7 +4,7 @@
 [![ChatGPT](https://img.shields.io/badge/ChatGPT-4.1--Approved-blueviolet?style=flat)](https://github.com/AdamTakvam/admin-scripts)
 
 
-# Dr. Bash
+# Dr. Bash v0.5
 A platform for building professional-grade Bash scripts. We make Bash beautiful in spite of itself!
 Includes a collection of scripts for basic (and not-so-basic) system administration and a whole "thing" for managing large media file repositories. 
 See the Philosophy section below for more details on what makes this repo special.
@@ -56,6 +56,9 @@ done
 * Create a new base library `lib/help.cs` which is anticipated to be necessary to implement `explain_this.sh` the way I want to.
 * Create and install actual manpages for this stuff.
 * Package as a `.deb` and perhaps trick someone into hosting it for me.
+* Create a self-diagnostic to make sure everything is installed right and call out any possible configuration errors. (aka. Deliver warm fuzzies)
+* Create a maste test runner that executes all of the functional test scripts in the repo.
+* Create a library for functional tests containing the Assert functions and whatever else is common to most tests.
 * Continue development on the media management platform. I've gotten as far with it as I can with Bash and it's definitely usable in its current form. So, I started to develop the deduplication logic in Python. But I really don't have a compelling reason to learn Python, especially when I already know C# inside and out. So all future media platform development will be in C#. Sorry, not sorry.
 
 # Executable Scripts
@@ -94,7 +97,7 @@ Status:
 A set of utilities for wrestling control of your network when you have far too many network adapters.
 
 ## serial.shd/
-One word: Cisco
+One word: Cisco<br>
 But certainly can be useful for any appliance with a serial port interface.
 
 ## system.shd/
@@ -170,8 +173,6 @@ A collection of powerful methods to serializing, deserializing, and making bulk 
 # The Environment Commands
 These scripts are intended to be sourced into one's environment - usually in ~/.bashrc - to serve as complimentary commands to the ones Bash natively provides. As such, the script files themselves are of little interest. The important part is the commands themselves, of which there can be many per file. So, lets dig in...
 
-[work in progress]
-
 # Environment Variables
 You're going to want to define these in your .bashrc file:
 
@@ -208,12 +209,12 @@ There needs to be more of that sort of thing going on...
 
 Q: What are derivatives of Debian?
 
-The Linux ecosystem of operating systems is organized into families. Families have a progenitor or "root distribution" that leads the way by starting witgh the Linux kernel and making all of the fundamental tooling and pathing decisions necessary to make the kernel into a full-fledged operating system. 
-Within a family, there may or may not exist derivatives of a core distro. Other distributions or "distros" put theirr own spin on the root distribution, but usually stop short of making any fundamental changes thgat would break script compatibility.
+The Linux ecosystem of operating systems is organized into "families" or "lineages". Families have a progenitor or "upstream distribution" that leads the way by starting with the Linux kernel and making all of the fundamental tooling and pathing decisions necessary to make the kernel into a full-fledged operating system.<br> 
+Within a family, there may or may not exist derivatives of this upstream distribution. Other distributions or "distros" put their own spin on the upstream distro, but usually stop short of making any fundamental changes that would break script compatibility.
 
-Q: That is quite a big assumption that you've based these scripts on. What if I'm inclined to help expand the range of systems these scripts work on?
+Q: That is quite a big assumption that you've based these scripts on. What if I'm inclined to expand the range of systems these scripts work on?
 
-A: If you are running another distro, notice a script not working properly, are motivated to get the script working on that distro, and add proper conditional code to make your changes take effect only on the distros you've tested and certified the functionality on, then by all means issue a pull request for that shizz. 
+A: If you are running another distro, notice a script not working properly, are motivated to get the script working on that distro, and add proper conditional code to make your changes take effect only on the distros you've tested and certified the functionality on, then by all means issue a pull request for that shizz.<br> 
 However, I'm not especially interested in backports to earlier versions of Bash prior to 4 because I'm well aware that I make heavy use of Bash-isms that didn't exist in Bash 3. So let's just let the past stay in the past, OK?
 
 Q: Why can't I install these utilities as a package with apt?
@@ -222,5 +223,5 @@ A: Because we're just not that cool yet. Maybe one day..
 
 Q: You say Bash, but will these run under 'ksh', 'zsh', or 'fish'?
 
-A: Yes. The scripts in the .shd directories should run fine. They've had limited testing on zsh and they worked fine because the shebang line causes them to run under bash regardless of the shell used to invoke them. However, you could run into issues with sourcing the scripts in 'env/'.
+A: Yes. The scripts in the .shd directories should run fine. They've had limited testing on zsh and they worked fine because the shebang line causes them to run under bash regardless of the shell used to invoke them. However, you could run into issues with sourcing the scripts in 'env/'. But if you meant whether the platform will work if sourced from a script running under some other shell, it certainly will not.
 
