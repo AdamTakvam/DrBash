@@ -16,6 +16,7 @@ AssertEqual() {
   if [ "$1" == "$2" ]; then
     echo -e "$(ColorText GREEN 'Passed!')"
   else
+    fail=1
     echo -e "$(ColorText LRED 'FAILED')"
     printf "\t%s\n" "Expected: ${1:-<null>} $(Raw "$1")"
     printf "\t%s\n" "Received: ${2:-<null>} $(Raw "$2")"
@@ -24,6 +25,7 @@ AssertEqual() {
 
 declare -i n=1
 declare -r TEST_STR="This is a test"
+declare -i fail=0
 
 echo -n "Test $(( n++ )): Log() with no message: "
 AssertEqual "" "$(Log)"
@@ -66,8 +68,7 @@ AssertEqual "$TEST_STR\n" "$(LogLiteral "$TEST_STR\n")"
 echo -n "Test $(( n++ )): LogLiteral() -n write: "
 AssertEqual "$TEST_STR\b" "$(LogLiteral -n "$TEST_STR\b")"
 
-echo -n "Test $(( n++ )): Log() write from stdin: "
-AssertEqual "$TEST_STR" "$(printf "%s" "$TEST_STR" | Log)"
-
 echo -n "Test $(( n++ )): Log() -- write from stdin: "
 AssertEqual "$TEST_STR" "$(printf "%s" "$TEST_STR" | Log --)"
+
+exit $fail

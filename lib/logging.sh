@@ -2,52 +2,41 @@
 __logging=1
 
 source "${USERLIB:=$HOME/lib}/arrays.sh"
-
-#
-# -------------------- General Utility Functions ---------------------------------------
-#
-
-ReadStdIn() {
-  local input=""
-  while read -r _msg; do
-    input+="$_msg"
-  done
-  printf "%s" "$input"
-}
+source "${USERLIB:=$HOME/lib}/read_stdin.sh"
 
 #
 # -------------------- Internal Use Only ---------------------------------------
 #
 _Log() {
+  local _msg
+
+  if [ "$2" ]; then
+      [ "$2" == "--" ] && _msg="$(cat)" \
+                       || _msg="$2"
+  else
+      [ "$1" == "--" ] && _msg="$(cat)" \
+                       || _msg="$1"
+  fi
+
   case "$1" in
     "")
       echo ;;
     --)
-      _msg="$(ReadStdIn)" 
-      [ "$_msg" ] && echo -e "$_msg" ;;
+      echo -e "$_msg" ;;
     -lr)
-      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
-                       || _msg="$2"
       [ "$_msg" ] && printf "%${COLUMNS}s\n" "$_msg" || echo ;;
     -lrn)
-      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
-                       || _msg="$2"
       [ "$_msg" ] && printf "%${COLUMNS}s" "$_msg" ;;
     -ln)
-      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
-                       || _msg="$2"
       [ "$_msg" ] && printf "%s" "$_msg" ;;
     -l)
-      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
-                       || _msg="$2"
       [ "$_msg" ] && printf "%s\n" "$_msg" || echo ;;
     -n)
-      [ "$2" == "--" ] && _msg="$(ReadStdIn)" \
-                       || _msg="$2"
       [ "$_msg" ] && echo -e "$1" "$_msg" ;;
     *)
-      echo -e "$1" ;;
+      echo -e "$_msg" ;;
   esac
+  unset _msg
 }
 
 _Journal() {
@@ -59,7 +48,7 @@ _Journal() {
   local msg="$1"
 
   # If -- passed in, check stdin
-  [ "$msg" == '--' ] && msg="$(ReadStdIn)"
+  [ "$msg" == '--' ] && msg="$(cat)"
 
   if [ "$msg" ]; then 
     LogDebug "Calling: logger $param -p $logLevel "$msg""
@@ -239,7 +228,7 @@ Prompt() {
       local maxValue="$(echo "$3" | sed -E 's/[0-9]+-([0-9]+)/\1/')" 
       read -p "$msg " input; LogError
       if (( $p < $minValue )) || (( $p > $maxValue )); then
-        LogError "Value entered $input does not fall within expecterd range $minValue-$maxValue"
+        LogError "Value entered $input does not fall within expected range $minValue-$maxValue"
         return 3
       fi
       echo "$input" ;;
@@ -351,6 +340,7 @@ LogRight() {
 # Output will consume 2 rows of display
 # Line will be the same length as your text
 # + $1 = Message
+# + $2 = (opt) Character to use for the underline effect
 # - stdout = Your exact message with a row of dashes on the subsequent line
 LogUnderline() {
   msg="$(Log -l "$1")" # Pass it through any applicable filters or standard formatting

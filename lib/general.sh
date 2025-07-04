@@ -1,30 +1,6 @@
 # The set of functions in this library are intended for general use in all types of scripts
 # They represent generic, common functionality that most scripts require
 # 
-# To include in your script, copy/paste:
-# source ${USERLIB:-$HOME/lib}/general.sh
-#
-# If you have chosen to locate this file elsewhere, then be sure to initialize the USERLIB variable in your .bashrc file. 
-# Scripts call sudo as necessary, so you should never have to use sudo to call any library function.
-#
-# Return values:
-#   0     Successfully accomplished whatever it was intended to accomplish
-#   1-9   General error (catch-all category for an error that doesn't fit any of the other categories)
-#   10-19 The user interrupted execution in some way
-#   20-29 The operation aborted because the intended result has already been achieved or is logically unnecessary
-#   30-39 A dependency could not be resolved or some other necessary resource could not be located
-#   90-99 The programmer didn't program correctly
-#
-# Implementation notes for scripts sourcing this library:
-#   - This is not just a library; it's a scripting paradigm
-#   - Use the provided script.template file for any new scripts that you write
-#   - Your script WILL be sourced 
-#       so have all of your logic in functions 
-#       and protect the main method call as provided in the template script
-#   - User the various Log() functions (in logging.sh) for your script's output
-#       echo should only be used for help screens, 
-#       returning values from functions,
-#       and piping string values into other functions or commands
 
 # Protect against being sourced multiple times
 [ "$__general" ] && return 0
