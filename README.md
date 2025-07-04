@@ -5,12 +5,12 @@
 
 
 # Dr. Bash
-A platform for builkding professional-grade Bash scripts. We make Bash beautiful in spite of itself!
+A platform for building professional-grade Bash scripts. We make Bash beautiful in spite of itself!
 Includes a collection of scripts for basic (and not-so-basic) system administration and a whole "thing" for managing large media file repositories. 
 See the Philosophy section below for more details on what makes this repo special.
 
 ## ASSumptions 
-These scripts are only intended to work correctly on Debian 12 (and derivitives thereof) with Bash 5.x. I'm not aware of any incompatibilities with Bash 4.x, but I'm not actively validating the scripts on that version, so you might run into issues. Bash 3.x is definitely not compatible.
+These scripts are only intended to work correctly on Debian 12 (and derivatives thereof) with Bash 5.x. I'm not aware of any incompatibilities with Bash 4.x, but I'm not actively validating the scripts on that version, so you might run into issues. Bash 3.x is definitely not compatible.
 
 So, if you find a bug and you're running something else, you must verify it on this setup before logging it. Otherwise, it will fall under "ports" which is not really a thing unless you want to make it a thing. 
 
@@ -29,9 +29,9 @@ Basically, I'm just one guy and I'm not assuming that anyone will fall in love w
 ### For contributors to this project:
 * Clone this repo then run the ./mkbinlink script to create symlinks in `~/bin` to the executable scripts in this repo.
 * Ensure that `~/bin/` is in your path and Bob's your uncle. (I'm not really that old; I just think it's funny)
-* Refer to the Scripts section below for a summaery of what the most significant scripts do.
+* Refer to the Scripts section below for a summary of what the most significant scripts do.
 * Check for README.md files in the subdirectories for a technical description of every single script
-  * If no README files exist in the subdirectoruies, that's because the planned tool to generate them has not been built yet
+  * If no README files exist in the subdirectories, that's because the planned tool to generate them has not been built yet
 
 ## Usage
 How the scripts are used varies depending on the directory they are found in:
@@ -62,7 +62,7 @@ done
 To get you oriented, here is a brief overview of the scripts in the root or the repo as well as the `*.shd/` subs generally. A detailed description of the `lib/` and `env/` subs can be found further down in this epic docxument.
 For informatiuon on the scripts in the `*.shd/` subs, refer to the README files in those respective subs.
 For a more detailed explanation of exactly what each script does, simply run it with the `-h` and all will be revealed.
-One near-term goal is to automate the generation of REEADME files for each of the `*.shd/` subdirectories. `lib/` and `env/` will be automated eventually, but that's a different task due to the nature of those files.
+One near-term goal is to automate the generation of README files for each of the `*.shd/` subdirectories. `lib/` and `env/` will be automated eventually, but that's a different task due to the nature of those files.
 
 Naming Convention: 
 * The directories named with a `.shd` extension contain scripts that were written on the platform. 

@@ -142,11 +142,11 @@ DisplayResults() {
 
   if [ ${#videos[@]} == 0 ]; then
     LogError "No matches found for case-insensitive search term(s): $(SerializeArray -q -d=, -dS SEARCHTERMS)"
-    showMenu=0
-    return 1 
-  fi
-  
-  if [ $interactive == 1 ]; then
+    if [ "$menuMode" == 0 ]; then
+      showMenu=0
+      return 1
+    fi
+  elif [ $interactive == 1 ]; then
     # Format results for human consumption
     LogHeader "\nMatches:"
     for (( i=0; i < ${#videos[@]}; i++ )); do
@@ -161,13 +161,20 @@ DisplayResults() {
 
 DoCommand() {
   local FNAME="DoCommand()"
-  local action="$1"; shift; [ -z "$action" ] && return
+  local -l action="$1"; shift; [ -z "$action" ] && return
   local -a f_indices=("$@")
   local -a filenames=()
 
   case "$action" in
     e | p | d)
-	    # Get the filenames corresponding to the indices passed in
+	    # Convenience mode p
+      if [ "$action" == 'p' ] && [ 0 == "${#f_indices[@]}" ]; then
+        local -i q=$(( ${#videos[@]} - 1 ))
+        f_indices=($(seq 0 $q))
+        unset q
+      fi
+
+      # Get the filenames corresponding to the indices passed in
 	    for i in ${f_indices[@]}; do
 	      LogDebug "Number of items in videos[] = ${#videos[@]}"
 	      fname="${videos[$i]}"
@@ -246,8 +253,12 @@ DoCommand() {
   esac
 }
 
+declare -i menuMode=0   # Menu Mode = interactivbe + results found for initial query
+                        #   from then on, don't bail if a query returns no results.
+
 ShowMenu() {
   declare FNAME="ShowMenu()"
+  menuMode=1
 
   Log -n "\nEnter a command, or h for help, or q to quit: " 
   read cmd
@@ -257,6 +268,7 @@ ShowMenu() {
 
   local -a indices=()
   indStr="${cmd:2}"
+  eval "indices=($indStr)"
 #  read -a indices <<< "$indStr" 
 #  LogDebug "$FNAME.#indices = ${#indices[@]}"
 #  LogDebug "$FNAME.indices() = $(SerializeArray -d=, -dS indices)"
@@ -265,9 +277,9 @@ ShowMenu() {
 #  LogDebug "$FNAME.#indices = ${#indices[@]}"
 #  LogDebug "$FNAME.indices() = $(SerializeArray -d=, -dS indices)"
 
-awkStr="$(echo "${indStr}" | awk '{ for(i=1; i<=NF; i++) { print $i }}')"
-  LogDebug "$FNAME.awkStr = $awkStr"
-  IFS=$'\n' indices=($awkStr)
+  # awkStr="$(echo "${indStr}" | awk '{ for(i=1; i<=NF; i++) { print $i }}')"
+  # LogDebug "$FNAME.awkStr = $awkStr"
+  # IFS=$'\n' indices=($awkStr)
   LogDebug "$FNAME.#indices = ${#indices[@]}"
   LogDebug "$FNAME.indices() = $(SerializeArray -d=, -dS indices)"
 
