@@ -1,7 +1,7 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/run.sh"
-source "${USERLIB:-$HOME/lib}/general.sh"
+source "$DRB_LIB/drbash.sh"
+source "$DRB_MEDIA_LIB/media-props.sh"
 
 Require libimage-exiftool-perl 
 
@@ -19,53 +19,56 @@ PrintHelp () {
   Log "This tool is intended to be one step in a pipeline of automated media file processing."
   Log
   Log "$(Header "Concept:") This utility is only intended to operate on media files named according to the following convention:"
-  LogTable  "\t<title> [<tags>].<ext>
-\tWhere:
-\t\t<tags> = <media_attributes> <resolution>
-\t\t<media_attributes> = Whatever you define
-\t\t<resolution> = Exactly one of: 240p, 360p, 480p, 720p, 1080p, 2k, 4k, 6k, 8k"
+  LogTable "\t<title> [<tags>].<ext>
+    \tWhere:
+    \t\t<tags> = <media_attributes> <resolution>
+    \t\t<media_attributes> = Whatever you define
+    \t\t<resolution> = Exactly one of: 240p, 360p, 480p, 720p, 1080p, 2k, 4k, 6k, 8k"
   Log "Example: 12 Angry Men [classic.movie 2.rank court.drama bob.favorite 720p].mp4"
   Log
-  Log "$(Header "Usage:") $APPNAME [OPTIONS...]"
+  Log "$(Header "Usage:") $APPNAME [OPTION...] [FILE...]"
   Log
-  LogTable "$(Header "[OPTIONS...]")\t(optional; do not combine)
-\t-h\tDisplay this help text.
-$(PrintLogHelp -q=0)
-\t-s\tSimulate what would be done in a real run (equivalent to -vv).
-\t-r\tReevaluate resolution tags for all files
-\t-y\tUnattended mode. Assume default responses to all prompts.
-\t-st\tDeveloper testing mode.
-\t-fs\tForce short run (since .lastrun file modification date).
-\t-fl\tForce long run (ignore .lastrun file)."
+  Log "$(Header "OPTION")\t(optional; do not combine)"
+  LogTable "\t-h\tDisplay this help text.
+    $(PrintLogHelp -q=0)
+    \t-s\tSimulate what would be done in a real run (equivalent to -vv).
+    \t-r\tReevaluate resolution tags for all files
+    \t-y\tUnattended mode. Assume default responses to all prompts.
+    \t-st\tDeveloper testing mode.
+    \t-fs\tForce short run (since .lastrun file modification date).
+    \t-fl\tForce long run (ignore .lastrun file)."
   Log
-  LogTable "$(Header "Data Files:")\t$USERDATA/$APPNAME-tagfixes.shdata
-\tAssociative array of extended regular expressions to match with tags (key)
-\tand values to replace them with (value)
-\tTest with: sed -E s/key/value/
-\tFormatted as an associative array definition. For example:
-\t( [key1]=value1 \\ 
-\t  [key2]=value2 )"
+  Log "$(Header "FILE")\t(optional) One or more files or glob pattern to process."
+  LogTable "\tIf not specified, all media files in DRB_MEDIA_STAGING will be processed.
+    \tIf DRB_MEDIA_STAGING is not set, then all media files in the current directory will be processed.
+    \tDRB_MEDIA_STAGING = ${DRB_MEDIA_STAGING:-<not set>}"
   Log
-  Log "$(Header "Filename Normalization:")"
-  LogTable "  \t* Reduces multiple sequential space characters to just one space character.
-  \t* Ensures all tags are lower-case.
-  \t* Normalizes abbreviated tags.
-  \t* Any text after the close bracket will be removed."
+  Log "$(Header "Data File:")\t$DRB_DATA/$APPNAME-tagfixes.shdata"
+  LogTable "\tAssociative array of extended regular expressions to match with tags (key)
+    \tand values to replace them with (value)
+    \tTest with: sed -E s/key/value/
+    \tFormatted as an associative array definition. For example:
+    \t( [key1]=value1 \\ 
+    \t  [key2]=value2 )"
   Log
-  Log "$(Header "Usage Examples:")"
+  LogHeader "Filename Normalization:"
+  LogTable "\t* Reduces multiple sequential space characters to just one space character.
+    \t* Ensures all tags are lower-case.
+    \t* Normalizes abbreviated tags.
+    \t* Any text after the close bracket will be removed."
+  Log
+  LogHeader "Usage Examples:"
   LogTable "\t* To force a long (all files) run with resolution (re)tagging and verbose logging, do:
-\t$APPNAME -v -r -fl
-\n
-\t* Do NOT:
-\t$APPNAME -vrfl
-\n
-\t* Remove text matching pattern:
-\t$APPNAME \"HD\""
+    \t$APPNAME -v -r -fl
+    \t* $(ColorText LRED "Do NOT:")
+    \t$APPNAME -vrfl
+    \t* Process only files with mp4 extension in current directory with debug logging:
+    \t$APPNAME -vv \"./*.mp4\""
   Log
 }
 
 # THIS IS TOO DIFFICULT FOR BASH.
-# MOVE TO PYTHON
+# MOVE TO C#
 #
 # Remove duplicate tags
 # $1 = tags[]
@@ -82,58 +85,6 @@ $(PrintLogHelp -q=0)
 #
 #  echo "${!workingDict[*]}"
 #}
-
-# Creates a resolution tag
-# $1 = file name
-# output = rez
-
-# 7680 x 4320 = 33,177,600 (8K)
-let min_8k=20736000
-# 3840 x 2160 = 8,294,400 (4K)
-let min_4k=5990400
-# 2560 x 1440 = 3,686,400 (1440p)
-let min_1440=2880000
-# 1920 x 1080 = 2,073,600 (1080p)
-let min_1080=1497600
-# 1280 x 720 = 921,600 (720p)
-let min_720=614400
-# 640 x 480 = 307,200 (480p)
-let min_480=240000
-# 480 x 320 = 172,800 (320p)
-let min_320=129600
-# 360 x 240 = 86,400 (240p)
-
-GetResolution() {  
-  declare -r file="$1"
-  declare -a rezArr
-  IFS=$'\n' rezArr=($(exiftool -ImageHeight -ImageWidth "$file" | awk '{ printf $4"\n" }'))
-  if [ "${#rezArr[@]}" != 2 ]; then
-    LogError "\n$(ColorText YELLOW "Unable to read resolution from: $file (no data)")"
-    return 1
-  fi
-
-  LogVerboseError "\nResolution: ${rezArr[0]} x ${rezArr[1]}"
-
-  let rez=$(( ${rezArr[0]} * ${rezArr[1]} ))
-
-  if (( $rez > $min_8k )); then
-    echo "8k"
-  elif (( $rez > $min_4k )); then
-    echo "4k"
-  elif (( $rez > $min_1440 )); then
-    echo "1440p"
-  elif (( $rez > $min_1080 )); then
-    echo "1080p"
-  elif (( $rez > $min_720 )); then
-    echo "720p"
-  elif (( $rez > $min_480 )); then
-    echo "480p"
-  elif (( $rez > $min_320 )); then
-    echo "320p"
-  else
-    echo "240p"
-  fi
-}
 
 # If tag list does not contain the file resolution,
 #   this method will add it
@@ -234,6 +185,10 @@ NormalizeTags() {
   return 0
 }
 
+# targetFiles is an array of file names specified on the command line that overrides 
+#   the default behavior of acting on the entire repository directory.
+declare -a targetFiles
+
 ParseCLI() {
   # Parse command line args
   for p in "$@"; do
@@ -259,7 +214,7 @@ ParseCLI() {
         LogError "ERROR: Option not recognized: $p"
         exit 1 ;;
       *)
-        trimPatterns+=("$p") ;;
+        targetFiles+=("$p") ;;
     esac
   done
   
@@ -274,27 +229,18 @@ ParseCLI() {
   LogDebug "Simulation Mode: No changes will be written to disk."
 } 
 
-declare -A TAGFIXES=()
-
 ReadConfig() {
   # Load the tagfixes data file
-  declare tagFixesFile="$USERDATA/$APPNAME-tagfixes.shdata"
-  
-  if [ -r "$tagFixesFile" ]; then
-    declare -Ar TAGFIXES="$(cat "$tagFixesFile")"
-    LogVerbose "TagFixes: ${#TAGFIXES[@]}"
-  else
-    LogError "Tag fixes data file does not exist or not readable: $tagFixesFile"
-    [ $unattended == 1 ] || read -n1 -p "Do you want to continue with just resolution fixing? [y/N]? " choice; echo
-    [ "${choice,,}" == 'y' ] || exit 30
-  fi
+  declare -A TAGFIXES
+  ConfigFile_TAGFIXES TAGFIXES
+  LogVerbose "TagFixes: ${#TAGFIXES[@]}"      
 }
 
 declare -a fileSet
 declare -r LastRunFileExt="lastrun"
 declare -r LastRunFile=".$APPNAME.$LastRunFileExt"
 
-PrepareForRun() {
+BuildTargetList() {
   failReason="<unknown>"
   successReason="<unknown>"
   if [ $forceLongRun ]; then
@@ -304,11 +250,11 @@ PrepareForRun() {
   elif [ $forceShortRun ]; then
     successReason="short run was forced by command-line parameter."
     shortRun='y'
-  elif [ "$(cat $LastRunFile)" == "${trimPatterns[*]}" ]; then
+  elif [ "$(cat $LastRunFile)" == "${targetFiles[*]}" ]; then
     successReason="$LastRunFile exists and its contents match the current run parameters."
     shortRun='y'
   else
-    failReason="the requested text to remove does not match what was previously specified.\nPrevious: $(cat $LastRunFile)\nCurrent:  ${trimPatterns[*]}"
+    failReason="the requested text to remove does not match what was previously specified.\nPrevious: $(cat $LastRunFile)\nCurrent:  ${targetFiles[*]}"
   fi
   
   if [ "$testMode" ]; then
@@ -320,21 +266,36 @@ PrepareForRun() {
     for tfile in "${fileSet[@]}"; do
       LogDebug "Found Test File: $tfile"
     done
+  elif [[ "${#targetFiles[@]}" != 0 ]]; then
+    fileSet=("${targetFiles[@]}")
+    if [[ ${#fileSet[@]} == 1 ]]; then
+      LogVerbose "Target file: ${fileSet[0]}"
+    else
+      LogVerbose "Target Files:"
+      for f in "${fileSet[@]}"; do
+        LogVerbose "\t- $f"
+      done
+    fi
   elif [ $shortRun ]; then
     Log "Performing abbreviated run because $successReason"
     # The sed part removes the leading ./ from the filename
     IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f -newer "$LastRunFile" | sed 's/^\.\///'))
   else
-    LogError "Cannot perform abbreviated run because $failReason"
+    if [ $forceShortRun ]; then
+      LogError "Cannot perform abbreviated run because $failReason"
+    else
+      Log "Performing full scan of $PWD"
+    fi
+
     IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f | sed 's/^\.\///'))
   fi
   
-  LogVerbose "Found ${#fileSet[*]} files..."
+  Log "Found ${#fileSet[*]} files..."
   
   if [ ${#fileSet[*]} -gt 100 ]; then
-    Log "Target file count: ${#fileSet[*]}"
-    [ $unattended == 1 ] || read -n1 -t10 -p "Are you sure you want to continue [Y/n] (10s)? " cont; echo
-    [ "${cont,,}" == 'n' ] && exit 0
+#    Log "Target file count: ${#fileSet[*]}"
+    [[ "$unattended" == 1 ]] || read -n1 -t10 -p "Are you sure you want to continue [Y/n] (10s)? " cont; echo
+    [[ "${cont,,}" == 'n' ]] && exit 0
   fi
 }
 
@@ -343,6 +304,7 @@ declare -i renameCount=0
 
 FixTags() {
   filename="$1"
+  fileIndex=$2
 
   # There are some files we need to ignore
   [ -e "$filename" ] || return 0 # Hack around bash bugs
@@ -355,15 +317,14 @@ FixTags() {
   # Sanity check
   [ -z "$newFilename" ] && { LogError "$(ColorText YELLOW "Internal Error:") NormalizeTags() returned a null filename!"; exit 99; }
 
-  LogDebug "Current file name = $filename\nNew file name = $newFilename"
+  LogDebug -l "Cur file name = $filename"
+  LogDebug -l "New file name = $newFilename"
   
   if [ "$newFilename" == "$filename" ]; then
     Log -n '.'
   else
-    progress=`awk -v fileIndex=$fileIndex -v numFiles=${#fileSet[@]} 'BEGIN { printf "%d%\n", (fileIndex/numFiles)*100 }'`
-    progress=$(printf %3s $progress)
-
-    declare fileOpText="\nRename: ${filename}\n$progress  => $(ColorText LPURPLE "$newFilename")"
+    declare -i progress=$(awk -v fileIndex=$fileIndex -v numFiles=${#fileSet[@]} 'BEGIN { printf "%d", (fileIndex/numFiles)*100 }')
+    declare fileOpText="\nRename: ${filename}\n$(printf "%3d%%" $progress) => $(ColorText LPURPLE "$newFilename")" 
     Log "$fileOpText"
     
     # Force doFileOp to 'n' if this is a simulation
@@ -373,8 +334,8 @@ FixTags() {
     fi
 
     # Prompt before performing file operation
-    if [ "$prompt" != "n" ]; then
-      [ $unattended == 1 ] || read -n1 -p "Perform this file operation [Y/n/a/q]? " doFileOp; echo
+    if [[ "$prompt" != 'n' ]]; then
+      [[ "$unattended" == 1 ]] || read -n1 -p "Perform this file operation [Y/n/a/q]? " doFileOp; echo
       case $doFileOp in
         n)
           doFileOp='n' ;;
@@ -382,7 +343,7 @@ FixTags() {
           prompt='n'
           doFileOp='y' ;;
         q)
-          exit 0 ;;
+          exit 2 ;;
         *)
           doFileOp='y' ;;
       esac
@@ -428,13 +389,13 @@ WrapUp() {
 # if [ ! "$(IsSourced)" ]; then
 ParseCLI "$@"
 ReadConfig
-PrepareForRun
+BuildTargetList
 
 # --- FILE LOOP ---
 declare -a errorFiles=()
-for _filename in "${fileSet[@]}"; do
-  FixTags "$_filename"
-  [ $? -ne 0 ] && errorFiles+=("$_filename")
+for (( fileIndex=0; fileIndex < ${#fileSet[@]}; fileIndex++ )); do
+  currFile="${fileSet[$fileIndex]}"
+  FixTags "$currFile" $fileIndex || errorFiles+=("$currFile")
 done
 
 WrapUp errorFiles

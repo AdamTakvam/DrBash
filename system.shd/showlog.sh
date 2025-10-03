@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/run.sh"
+source "${DRB_LIB:-/usr/local/lib}/run.sh"
 
 # Environment Variables
 : ${LOGROOT:="/var/log"}
@@ -107,8 +107,7 @@ esac
 # Display the service status and logs
 declare -a logs
 for svc in "${svcs[@]}"; do
-  Log "\nService: $svc"
-  Log "--------------------"
+  LogUnderline "Service: $svc" "#"
   
   # Get service status, if requested
   if [ $svcStats ]; then
@@ -117,14 +116,14 @@ for svc in "${svcs[@]}"; do
   fi
 
   # Get log from Journal
-  Log "Journal:"
+  LogUnderline "Journal: $svc"
   Log "$(journalctl -u "$svc" | head -$numLines)"
 done
 
 # Display the log files
 for logFile in "${logFiles[@]}"; do
   if [ -r "$logFile" ]; then
-    Log "${logFile}:"
+    LogUnderline "${logFile}:"
     Run tail -$numLines "$logFile"
     Log
   else

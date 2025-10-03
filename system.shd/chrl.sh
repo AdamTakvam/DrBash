@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/general.sh"
+source "${DRB_LIB:-/usr/local/lib}/run.sh"
 
 declare -r RL3="multi-user.target"
 declare -r RL5="graphical.target"

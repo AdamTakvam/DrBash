@@ -1,7 +1,7 @@
 #!/bin/bash
 
 tabs 4
-source "${USERLIB:-$HOME/lib}/general.sh"
+source "${DRB_LIB:-/usr/local/lib}/general.sh"
 VERBOSE=1
 
 PrintHelp() {

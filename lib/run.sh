@@ -2,7 +2,7 @@
 [ "$__run" ] && return 0
 __run=1
 
-source "${USERLIB:-$HOME/lib}/general.sh"
+source "${DRB_LIB:-/usr/local/lib}/general.sh"
 
 # Executes the specified command(s) as root if not in debug mode
 # + $1 = Optional flags
@@ -22,25 +22,22 @@ Run() {
 
   # Process and mask any parameters intended for this function
   for p in "$@"; do
-	  case "$p" in
-	    -u)
+    case "$p" in
+      -u)
         user=1
-	      shift ;;
-	    -r)
-	      if [ "$(HasSudo)" ]; then
-	        root=1 
-        else
-	        LogError "$FNAME Warning: Root-level execution requested by program, but user doesn't have sudo permissions. Attempting to execute command as user: $(whoami)..." 
-	      fi
-	      shift ;;
+        shift ;;
+      -r)
+        CanSudo && root=1 \
+                || LogVerboseError "$FNAME Warning: Root-level execution requested by program, but user doesn't have sudo permissions. Attempting to execute command as user: $(whoami)..." 
+        shift ;;
       *)
-	      break ;;
+        break ;;
     esac
   done
   
   # Automatic permission elevation mode
   if [ "$user" != 1 ] && [ "$root" != 1 ]; then 
-	  [ "$(HasSudo)" ] && root=1 || user=1
+    HasSudo && root=1 || user=1
   fi
 
   if [ "$root" == 1 ]; then
@@ -101,24 +98,54 @@ Run() {
   fi
 }
 
-# Determines whether the Run() command will succeed if/when it is called
-# Use this at the top of scripts if calling non-packaged dependencies
-#   to ensure the environment is setup correctly for your script to run
-# If calling a packaged dependency, use the Require() function instead
-#   because it can resol_Run_FindCmdv_Run_FindCmde missing dependency problems on the fly.
-#   This method does not
-# Note: This function will return success if the command passed in is an alias
+# Ensures that the specified package is installed
+# + $@ = Package names
+# - Returns:  lol: If this function returns anything, everything is fine
+#            rofl: If things aren't fine, your script dies. How's that for a return code?
+# - Exit Codes  1: Package failed to install
+#               2: Package does not exist in configured repos
+Require() {
+  [[ -z "$1" ]] && { LogError "No package name specified!"; return 99; }
+  [[ -z "$(which apt)" ]] && { LogError "apt is not installed!"; return 98; }
+
+  local -i retVal=1
+
+  for pkg in "$@"; do
+    if [ -z "$(apt list --installed 2>/dev/null | grep ^$pkg\/)" ]; then
+      Log "Updating packages. Please wait..."
+      sudo apt update 1>/dev/null
+      if [ "$(apt list 2>/dev/null | grep ^$pkg\/)" ]; then
+        Log "Installing required package: $pkg"
+        sudo apt-get install -y "$pkg" 1>/dev/null || exit 1
+      else
+        LogError "Package $pkg is not installed and does not exist in configured repositories."
+        exit 2
+      fi
+    fi
+  done
+}
+export -f Require
+
+Requires() {
+  Require "$@"
+}
+
+# Determines whether the Run() command will succeed if/when it is called.
+# Use this at the top of scripts to sanity check that Dr. Bash is installed correctly.
+# For any non-Dr. Bash packaged dependencies, use Require().
+#
+# Note: This function will return success if a command passed in is an alias
 #   but it does not check whether the target of the alias is valid
 # If this function fails, here are some solutions:
 #   1. Fully-qualify the command (e.g. /full/path/to/command)
 #   2. Add the location of the desired command to the $PATH variable
-#   3. Set $USERBIN to the path of the command
-# + $1 The command you want to run
-# - Returns:  0 Command will run
-#             1 Command will not run
+#   3. Set $DRB_BIN to the path of the command
+#
+# + $@ The commands you want to run
+# - Returns:  0 Commands will run
+#             1 One or more of the specified commands will not run
 CanRun() {
   _Run_FindCmd "$1" >/dev/null
-  [ $? ] && return 0 || return 1
 }
 
 # Internal: Locates the specified executable file
@@ -133,13 +160,15 @@ _Run_FindCmd() {
   [ -z "$1" ] && return 99
 #  LogDebugError "$FNAME: \$1 = $1"
   
-  # Strip off any parameters that may be along for the ride
   local cmdDir="$(dirname "$1")"
+  # Fix for bug in dirname that returns . when no path exists
   cmdDir="$([ "$cmdDir" == '.' ] && echo "" || echo "$cmdDir/")"
   LogDebugError "$FNAME: cmdDir = $cmdDir"
 
   local cmdName="$(basename "$1")"
   LogDebugError "$FNAME: cmdName = $cmdName"
+  
+  # Strip off any parameters that may be along for the ride
   local -a cmdNameBits=($cmdName)
   local cmd="${cmdDir}${cmdNameBits[0]}"
   LogDebugError "$FNAME: cmd = $cmd"
@@ -175,27 +204,27 @@ _Run_FindCmd() {
   if [ -x "./$cmd" ]; then
     LogDebugError "$FNAME: $cmd is a file in the current working directory."
     echo "./$cmd"
-    exit 0
+    return 0
   fi
 
-  # Is $cmd in the USERBIN directory?
-  if [ -x "$USERBIN/$cmd" ]; then 
-    LogDebugError "$FNAME: $cmd is a file in $USERBIN."
-    echo "$USERBIN/$cmd"
-    exit 0
+  # Is $cmd in the DRB_BIN directory?
+  if [ -x "$DRB_BIN/$cmd" ]; then 
+    LogDebugError "$FNAME: $cmd is a file in $DRB_BIN."
+    echo "$DRB_BIN/$cmd"
+    return 0
   fi
   
-  # What about USERSRC? (remember it has subdirectories)
-  local match="$(find "$USERSRC/" -executable -type f -name "$cmd") | head -1" 
+  # What about DRB_SRC? (remember it has subdirectories)
+  local match="$(find "$DRB_SRC/" -executable -type f -name "$cmd" | head -1)" 
   if [ -x "$match" ]; then
     LogVerboseError "$FNAME: The best last-ditch effort to find $cmd is $match. I hope we're right..."
     echo "$match"
-    exit 0
+    return 0
   fi
 
-  # What about USERLIB?  <-- Nothing in USERLIB should be executable, but whatevs...
-  [ -x "$USERLIB/$cmd" ] && { echo "$USERLIB/$cmd"; exit 0; }
-  [ -x "$USERLIB/$cmd.sh" ] && { echo "$USERLIB/$cmd.sh"; exit 0; }
+  # What about DRB_LIB?  <-- Nothing in DRB_LIB should be executable, but whatevs...
+  [ -x "$DRB_LIB/$cmd" ] && { echo "$DRB_LIB/$cmd"; return 0; }
+  [ -x "$DRB_LIB/$cmd.sh" ] && { echo "$DRB_LIB/$cmd.sh"; return 0; }
 
   # Then we have no fucking idea how to run $cmd
   LogVerboseError "$FNAME Error: All efforts to locate the executable $cmd have failed!"

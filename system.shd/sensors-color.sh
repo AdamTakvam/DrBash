@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/general.sh"
+source "${DRB_LIB:-/usr/local/lib}/run.sh"
 declare -r APPNAME="sensors-color"
 
 Require lm-sensors
@@ -44,15 +44,15 @@ Core 5:        +101.0°C  (high = +96.0°C, crit = +102.0°C)"
 TempDisplay() {
   local temp="$1"
   [ -z "$temp" ] \
-    && echo -n "??" \
-    || echo -n "+$temp.0°C"
+    && printf "%s" "??" \
+    || printf "%s" "+$temp.0°C"
 }
 
 TempExpr() {
   local temp="$1"
   [ -z "$temp" ] \
-    && echo -n "??" \
-    || echo -n "\+$temp.0°C\s"
+    && printf "%s" "??" \
+    || printf "%s" "\+$temp.0°C\s"
 }
 
 if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
@@ -101,17 +101,17 @@ for temp in "${temps[@]}"; do
   [ "${colorTemps["$temp"]}" ] && continue
   
   unset normal
-  if (($temp >= $ctemp)); then
-    colorTemps+=(["$temp"]="$(ColorText -e LRED "$(TempDisplay $temp)")")
+  if (( $temp >= $ctemp )); then
+    colorTemps["$temp"]="$(ColorText -e LRED "$(TempDisplay $temp)")"
     critical=1
-  elif (($temp >= $htemp)); then
-    colorTemps+=(["$temp"]="$(ColorText -e YELLOW "$(TempDisplay $temp)")")
+  elif (( $temp >= $htemp )); then
+    colorTemps["$temp"]="$(ColorText -e YELLOW "$(TempDisplay $temp)")"
     high=1
   else
     normal=1
   fi
 
-  if [ ! $normal ]; then
+  if [[ $normal != 1 ]]; then
     sensorData="$(echo "$sensorData" | \
       sed -E "s/$(TempExpr $temp)/${colorTemps["$temp"]} /g")"
   fi
@@ -121,4 +121,3 @@ Log "$sensorData"
 
 [ $critical ] && exit 2
 [ $high ] && exit 1
-exit 0

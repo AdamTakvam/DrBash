@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/run.sh"
+source "${DRB_LIB:-/usr/local/lib}/run.sh"
 
 APPNAME='superwhich'
 

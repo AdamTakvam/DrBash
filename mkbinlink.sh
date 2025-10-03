@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/run.sh"
+source "${DRB_LIB:-/usr/local/lib/DrBash}/run.sh"
 declare -r SCRIPT_NAME="mkbinlink"
 
 PrintHelp()
@@ -20,34 +20,29 @@ PrintHelp()
   Log
   Log "FILE\t(optional) The name of the script file to link. (default: ./*.sh)."
   Log "\t\t\tFile names containing a version in the form <name>-<Maj>.<min>.sh (e.g. myscript-1.0.sh) are ignored."
-  Log "\t\t\tLink files named <name>-latest will be linked as <name>-dev"
-  Log "\t\t\tLink files named <name>-stable will be linked as <name>"
+#  Log "\t\t\tLink files named <name>-latest will be linked as <name>-dev"
+#  Log "\t\t\tLink files named <name>-stable will be linked as <name>"
   Log
   Log "Environment Variables:"
-  Log "\tUSERSRC\tUser scripts directory (default: ~/src)"
-  Log "\tUSERBIN\tUser binaries directory (default: ~/bin)"
+  Log "\tDRB_SRC\tUser scripts directory (default: /usr/local)"
+  Log "\tDRB_BIN\tUser binaries directory (default: /usr/local/bin)"
   Log
 }
 
-# Parse command line args
-while  [[ "$1" =~ ^-   ]]; do
-  if   [[ "$1" =~ ^-h  ]]; then PrintHelp; exit 1 
-  elif [[ "$1" =~ ^-i  ]]; then interactive=1; shift
-  elif [[ "$1" =~ ^-vv ]]; then LogEnableDebug; shift
-  elif [[ "$1" =~ ^-v  ]]; then LogEnableVerbose; shift
-  elif [[ "$1" =~ ^-q  ]]; then LogEnableQuiet; shift
-  else LogError "ERROR: Option not recognized: $1"; exit 1
-  fi
-done
+ParseCLI() {
+  # Parse command line args
+  while  [[ "$1" =~ ^-   ]]; do
+    if   [[ "$1" =~ ^-h  ]]; then PrintHelp; exit 1 
+    elif [[ "$1" =~ ^-i  ]]; then interactive=1; shift
+    elif [[ "$1" =~ ^-vv ]]; then LogEnableDebug; shift
+    elif [[ "$1" =~ ^-v  ]]; then LogEnableVerbose; shift
+    elif [[ "$1" =~ ^-q  ]]; then LogEnableQuiet; shift
+    else LogError "ERROR: Option not recognized: $1"; exit 1
+    fi
+  done
 
-declare -r srcDir="$(realpath "${USERSRC:-$HOME/src}")"
-declare -r binDir="${USERBIN:-$HOME/bin}"
-
-LogDebug "srcDir=$srcDir"
-LogDebug "binDir=$binDir"
-
-# Create binDir if it does not exist
-[ ! -e $binDir ] && mkdir -p "$binDir"
+  declare -gr scriptFile="$1"
+} 
 
 # Create symlink in binDir to a library script
 # + $1 = script file name [mandatory]
@@ -68,10 +63,15 @@ LinkScript()
   # Create a softlink to the executable in the real lib path (if ~/lib is
   # a softlink) in the ~/bin directory with the same name except without the
   # '.sh' extension.
-  local libFileName="$(basename "$1")"
+  local libFile="$(realpath "$1")"
+  if [[ "$libFile" != "$1" ]]; then
+    LogDebug "Expanding '$1' to '$libFile"
+  fi
+
+  local libFileName="$(basename "$libFile")"
   LogDebug "libFileName = $libFileName"
   
-  local libFileDir="$(dirname "$1")"
+  local libFileDir="$(dirname "$libFile")"
   LogDebug "libFileDir = $libFileDir"
 
   # Remove file extension
@@ -96,8 +96,8 @@ LinkScript()
   fi
 
   # Make a few substitutions for reserved words/symbols in names 
-  linkFileName="$(echo "$linkFileName" | sed 's/latest$/dev/')"
-  linkFileName="$(echo "$linkFileName" | sed 's/\-stable$//')"
+#  linkFileName="$(echo "$linkFileName" | sed 's/latest$/dev/')"
+#  linkFileName="$(echo "$linkFileName" | sed 's/\-stable$//')"
   linkFileName="$(echo "$linkFileName" | sed 's/^_//')"
 
   # Reassemble fully-qualified paths
@@ -116,20 +116,25 @@ LinkScript()
     Run -r chmod +x "$libFile"
   fi
 
+  local -l choice
+
   if [ -f "$linkFile" ]; then
     Log -n "The link $linkFile already exists. Do you want to overrwrite it [Y/n] (10s)? "
     [ $QUIET ] || read -N 1 -t 10 choice; echo
-    [ "${choice,,}" == 'n' ] && return 3 || Run -r rm "$linkFile"
+    [ "$choice" == 'n' ] && return 3 || Run -r rm "$linkFile"
   fi
   
   if [ ! $QUIET ] && [ $interactive ]; then
     read -N 1 -p "Do you want to create a link $linkFile to $libFile (Y/n/a/q)? " choice; echo
-    [ "${choice,,}" == 'n' ] && return 10
-    [ "${choice,,}" == 'a' ] && unset interactive
-    [ "${choice,,}" == 'q' ] && exit 0
+    case "$choice" in
+      n) return 10 ;;
+      a) unset interactive ;;
+      q) exit 0 ;;
+    esac
   fi
 
-  Run -r ln -s "$libFile" "$linkFile"
+  Run -r /usr/bin/ln -s "$libFile" "$linkFile"
+
   if [ -f "$linkFile" ]; then
     Log "Link created: $linkFile -> $libFile"
     return 0
@@ -139,7 +144,17 @@ LinkScript()
   fi
 }
 
-declare -r scriptFile="$1"
+ParseCLI "$@"
+
+declare -r srcDir="$(realpath "${DRB_SRC:-/usr/local}")"
+declare -r binDir="${DRB_BIN:-/usr/local/bin}"
+  
+LogDebug "srcDir=$srcDir"
+LogDebug "binDir=$binDir"
+  
+# Create binDir if it does not exist
+[ ! -e $binDir ] && mkdir -p "$binDir"
+
 if [ -z "$scriptFile" ]; then
   Log -n "No script file specified. Do you want to do them All, get Help, or Quit [A,h,q] (10s)? " 
   [ "$QUIET" ] || read -N 1 -t 10 nextstep; echo
@@ -155,7 +170,7 @@ if [ -z "$scriptFile" ]; then
   IFS=$'\n' srcDirs=($(find "$srcDir/" -maxdepth 1 -type d -name "*.shd"))
 
   for dir in "${srcDirs[@]}"; do
-    for script in $(find "$dir/" -maxdepth 1 -executable -type f,l); do
+    for script in $(find "$dir/" -maxdepth 1 -executable -type f); do
       LinkScript "$script"
     done
   done

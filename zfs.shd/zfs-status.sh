@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/general.sh"
+source "${DRB_LIB:-/usr/local/lib}/general.sh"
 
 declare -r APPNAME="zfs-status"
 
@@ -21,17 +21,17 @@ PrintHelp() {
 declare showHealthy=1
 
 for p in "$@"; do
-	case "$p" in
-	  "?" | -h | --help)
-	    PrintHelp
-	    exit 0 ;;
-	  -e)
-	    unset showHealthy ;;
+  case "$p" in
+    "?" | -h | --help)
+      PrintHelp
+      exit 0 ;;
+    -e)
+      unset showHealthy ;;
     $(LogParamsCase))
-	    : ;;
+      : ;;
     *)
       pool_id="$1" ;;
-	esac
+  esac
 done
 
 declare -ar FAILWORDS=(DEGRADED REMOVED OFFLINE)

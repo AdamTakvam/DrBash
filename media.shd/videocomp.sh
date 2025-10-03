@@ -1,7 +1,7 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/run.sh"
-source "${USERLIB:-$HOME/lib}/arrays.sh"
+source "${DRB_LIB:-/usr/local/lib}/run.sh"
+source "${DRB_LIB:-/usr/local/lib}/arrays.sh"
 
 CanRun videoinfo
 if [ ! $? ]; then
@@ -13,7 +13,7 @@ declare -r APPNAME="videocomp"
 
 PrintHelp () {
   tabs 4
-  Log "Display metadata about video files."
+  Log "Display metadata about two or more video files for comparison purposes."
   Log
   LogTable "$(Header "Usage:")\t$APPNAME FILE...
   \t$APPNAME -h"

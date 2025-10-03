@@ -1,24 +1,28 @@
 # Administrative tools
 # Sourced in .bashrc to use from command line
 
-# source "${USERENV:-.}/env-common.sh"
+# source "${DRB_ENV:-.}/env-common.sh"
 
 # Run vim as root, but still use the current user settings
 # $1 = File you wish to edit
 sudovim() {
-  [ "$1" ] && sudo vim -u "$HOME/.vimrc" "$1"
+  sudo -E vim -u "$HOME/.vimrc" "$@"
 }
 # export -f sudovim
 
 # Delete files as root (workaround for not having env variables set correctly)
 sudorm() {
-  if [ "$2" ]; then
-    sudo -E rm $1 "$2"
-  elif [ "$1" ]; then
-    sudo -E rm "$1"
-  else
-    echo "Error: No target specified"
-  fi
+  sudo -E rm "$@"
+}
+
+sudomv() {
+  # Future: detect glob pattern or regex in destination
+  #   and launch better tools to handle intelligent moves/renames
+  sudo -E mv "$@"
+}
+
+sudocp() {
+  sudo -E cp "$@"
 }
 
 killproc() {
@@ -51,7 +55,7 @@ high_cpu_pid() {
 # Lists the executable files installed by the given package
 # + $1 = The package that you want to run stuff from
 # - stdout: A list of hot and juicy executables
-exefrom() {
-  dpkg -L "$1" | xargs file | grep executable | awk -F':' '{ print $1 }'
+whatprovides() {
+  dpkg -S "$(/usr/bin/which "$1")" | cut -d: -f1
 }
 # export -f exefrom

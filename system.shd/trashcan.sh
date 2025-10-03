@@ -1,7 +1,7 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/run.sh"  # includes general.sh and logging.sh
-source "${USERLIB:-$HOME/lib}/arrays.sh" 
+source "${DRB_LIB:-/usr/local/lib}/run.sh"  # includes general.sh and logging.sh
+source "${DRB_LIB:-/usr/local/lib}/arrays.sh" 
 
 Require "trash-cli"
 

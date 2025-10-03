@@ -1,0 +1,35 @@
+# ~/.inputrc — Bash/Readline quality-of-life upgrades
+
+# Case-insensitive tab completion
+set completion-ignore-case on
+
+# Show completions immediately without double-tab
+# This has major drawbacks that end up making you type a lot more than you need to
+set show-all-if-ambiguous off
+
+# Don’t page the completion list with --More--
+set page-completions off
+
+# Colorize file types in completion lists
+set colored-stats on
+
+# Make completion menu stay up so you can cycle with Tab
+# This doesn't actually do what it claims to and 
+#   it actually makes autocompletion much more confusing and less helpful
+set menu-complete-display-prefix off
+
+# Up/Down arrows search history for commands starting with what's typed
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+
+# Make Ctrl-left/right jump by words (terminal must send correct sequences)
+"\e[1;5C": forward-word
+"\e[1;5D": backward-word
+
+# Treat hyphen and dot as part of a word for word-movement
+set completion-map-case on
+set completion-prefix-display-length 0
+
+# Increase history search speed (ignore duplicates)
+set skip-completed-text on
+

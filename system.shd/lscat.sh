@@ -2,7 +2,7 @@
 
 shopt -s extglob 
 
-source "${USERLIB:-$HOME/lib}/general.sh"
+source "${DRB_LIB:-/usr/local/lib}/general.sh"
 declare -r APPNAME="lscat"
 
 Help() {
@@ -18,16 +18,16 @@ Help() {
   $(LogParamsHelp)"
   Log
   LogTable "$(Header "DIR")\tThe base directory you want to search and/or glob expression used to filter the search.
-  \tIf not provided, the contents of all files in the current directory and all subdirectories wilkl be displayed."
+  \tIf not provided, the contents of all files in the current directory and all subdirectories will be displayed."
   Log
   LogTable "$(Header "Notes:")\t$APPNAME will search the specified directory and all of its subdirectories,
   \tbut it will not follow directory symlinks unless the -d flag is specified,
   \tnor will it print the contents of symlinks to files unless the -f flag is specified.
   \tIn no cases will this tool attempt to open non-file-based resources (i.e. /proc/cpuinfo)."
   Log
-  LogTable "$(Header "Notes 2:")\tThis tool is basically what \'cat -r\' would be if it existed.
-  \tIn most cases, you'll want to pipe the output of this command to grep as shown in the \'Usage\' line above.
-  \tIf you are looking for the flag to prevent this tool from recursing subdirectories, use the command \'cat *\'" 
+  LogTable "$(Header "Notes 2:")\tThis tool is basically what 'cat -r' would be if it existed.
+  \tIn most cases, you'll want to pipe the output of this command to grep as shown in the 'Usage' line above.
+  \tIf you are looking for the flag to prevent this tool from recursing subdirectories, use the command 'cat *'" 
   Log
 }
 

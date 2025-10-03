@@ -2,38 +2,32 @@ cdls () {
   cd "$1"
   ls
 }
-#export -f cdls
 
 cdll () {
   cd "$1"
   ll
 }
-#export -f cdll
 
 cdla () {
   cd "$1"
   la
 }
-#export -f cdla
 
 cdlla () {
   cd "$1"
   lla
 }
-#export -f cdlla
 
 # List the dot-files in the specified directory
 # $1 = path (default=CWD)
 lsdot() {
   ls -a "$1" | cut -d ' ' -f2 |  grep '^[.]'
 }
-#export -f lsdot
 
 # Find out which subdirectories are hogging all of the disk space.
 hog() {
   du -hc -d1 .
 }
-#export -f hog
 
 # Show the filesystem of all mounted volumes
 shfs() {
@@ -160,7 +154,7 @@ FilenameContainsNewlines_Ex2() {
 #
 
 FindInFiles() {
-	grep -EIHisnr --context=1 --devices=skip --exclude=*.mp4 --color=auto "$1" "${2:-*}"
+  grep -EIHisnr --context=1 --devices=skip --exclude=*.mp4 --color=auto "$1" "${2:-*}"
 }
 alias search=FindInFiles
 
@@ -179,4 +173,3 @@ grep-help() {
   echo -e "> fgrep\tshow only File names containing matching text"
   echo -e "> igrep\tcase-Insensitive pattern matching"
 }
-#export -f grep-help

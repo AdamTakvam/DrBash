@@ -1,0 +1,197 @@
+.TH MEDIA-FIXTITLE 1 "2025-08-14" "DrBash" "User Commands"
+.nh
+.ad l
+.SH NAME
+media-fixtitle \- normalize and clean titles of media filenames in the current directory
+.SH SYNOPSIS
+.B media-fixtitle
+[\fB-f=\fIGLOB\fR] [\fB-fl\fR|\fB-fs\fR] [\fB-s\fR|\fB-v\fR|\fB-vv\fR] [\fB-st\fR] [\fB-h\fR] [\fIEXPR...\fR]
+.SH DESCRIPTION
+\fBmedia-fixtitle\fR normalizes the \fItitle\fR portion of media filenames and removes user\-defined text or extended regular expression matches. It operates \fBonly in the current directory\fR (no recursion) and is designed to be one step in an automated media pipeline.
+
+The tool expects filenames of the form:
+.RS
+.nf
+<title> [<tags>].<ext>
+.fi
+.RE
+For example:
+.RS
+.nf
+12 Angry Men [classic.movie 2.rank court.drama bob.favorite 720p].mp4
+.fi
+.RE
+
+Normalization rules change only the title; tags (inside \fB[...]\fR) and the extension are preserved (with cleanup).
+.SH OPTIONS
+.TP
+.BR -f=\fIGLOB
+Act only on files matching \fIGLOB\fR (evaluated in the current directory).
+.TP
+.B -fl
+Force a \fBlong run\fR: process all files, ignoring the \fI.lastrun\fR marker.
+.TP
+.B -fs
+Force a \fBshort run\fR: process only files newer than the \fI.lastrun\fR marker.
+.TP
+.B -s
+Simulation mode (implies verbose/debug): show planned renames/deletions but do not write changes.
+.TP
+.B -vv
+Alias for \fB-s\fR.
+.TP
+.B -v
+Verbose output (handled by the logging framework).
+.TP
+.B -st
+Developer testing mode. Processes files whose names start with \fB=\fR in the current directory.
+.TP
+.B -h
+Show help and exit.
+.PP
+\fBNote:\fR \fB-q\fR (quiet) is explicitly rejected by the script.
+.SH EXPRESSIONS
+Positional \fIEXPR\fR arguments are case\-insensitive extended regular expressions applied to the \fItitle\fR (not tags). They are \fIadded\fR to the default removal patterns loaded from the patterns data file. Quote expressions and escape regex metacharacters as needed (develop with \fBsed -E\fR).
+.SH NORMALIZATION RULES
+The title normalization pipeline performs:
+.IP \(bu 2
+If the title has no spaces, replace hyphens with spaces.
+.IP \(bu
+Replace \fB+\fR and \fB_\fR with spaces; collapse repeated whitespace; trim leading/trailing spaces.
+.IP \(bu
+Lowercase, then capitalize the first letter of each word (with fixes for apostrophes).
+.IP \(bu
+Capitalize configured initialisms exactly as listed in the \fIabbreviations\fR data file.
+.IP \(bu
+Force configured filler words (articles, prepositions, etc.) to lowercase.
+.IP \(bu
+Ensure the first character of the title is uppercase.
+.IP \(bu
+Strip any text after the closing bracket of the tag block when recombining.
+.PP
+After normalization, the filename is rebuilt as:
+.RS
+.nf
+<New Title> [<original tags>].<ext>
+.fi
+.RE
+If the original had no extension, \fBmp4\fR is assumed.
+.SH DELETION MARKING
+Before normalization, filenames are checked against \fBdelete patterns\fR (regexes applied to both full filename and title). Matching files are queued for deletion and skipped from renaming. At the end of the run you are prompted per file: \fBY\fR/\fBn\fR/\fBq\fR.
+.SH RUN SELECTION (LAST RUN LOGIC)
+The script maintains \fI.media-fixtitle.lastrun\fR in the current directory containing the exact list of trim patterns used. By default:
+.IP \(bu 2
+If the file exists and its contents match the current patterns, a \fBshort run\fR processes only files newer than the marker.
+.IP \(bu
+If not, a \fBlong run\fR processes all files.
+.PP
+Use \fB-fs\fR or \fB-fl\fR to override. On completion, the marker is updated to the current pattern set.
+.SH INTERACTIVITY
+For large sets (>100 files) you are asked to confirm continuing. For each planned rename you can choose:
+.RS
+.TP
+.B Y
+Perform this rename.
+.TP
+.B N
+Skip this file.
+.TP
+.B A
+Do all remaining without prompting.
+.TP
+.B E
+Edit the proposed new filename interactively (via \fIEditFilename\fR helper).
+.TP
+.B Q
+Abort with exit status 1 (so pipelines can stop).
+.RE
+In simulation/debug mode, renames are not executed and prompts are suppressed.
+.SH FILES
+.TP
+\fB$USERDATA/.drbash\fR
+Default data directory if \fB$USERDATA\fR is not set.
+.TP
+\fB$USERDATA/media-fixtitle-abbr.shdata\fR
+List of initialisms to capitalize exactly (one per line).
+.TP
+\fB$USERDATA/media-fixtitle-filler.shdata\fR
+List of filler words to lowercase (one per line).
+.TP
+\fB$USERDATA/media-fixtitle-patterns.shdata\fR
+Extended regex patterns to remove from titles (one per line).
+.TP
+\fB$USERDATA/media-fixtitle-delete.shdata\fR
+Extended regex patterns that mark files for deletion (one per line).
+.TP
+\fB./.media-fixtitle.lastrun\fR
+Run marker controlling short/long run behavior and storing last pattern set.
+.SH ENVIRONMENT
+.TP
+.B USERDATA
+Root path for the \fI*.shdata\fR files. Defaults to \fB$HOME/.drbash\fR.
+.TP
+.B USERLIB
+Root path for helper libraries. Used to source:
+.RS
+.nf
+$USERLIB/run.sh
+$USERLIB/general.sh
+$USERLIB/editfilename.sh
+.fi
+.RE
+.SH EXIT STATUS
+.TP
+.B 0
+Success (including user choosing to terminate gracefully after prompts).
+.TP
+.B 1
+Invalid option or user abort (\fBQ\fR during prompts).
+.TP
+.B 99
+Internal sanity check failure; file a bug.
+.SH EXAMPLES
+Process all files with verbose logging:
+.RS
+.nf
+media-fixtitle -v -fl
+.fi
+.RE
+Remove literal text "DVD" from titles:
+.RS
+.nf
+media-fixtitle 'DVD'
+.fi
+.RE
+Act only on matching files:
+.RS
+.nf
+media-fixtitle -f='*.mp4' 'director''s cut|workprint'
+.fi
+.RE
+Short run (only files newer than last run) even if patterns changed:
+.RS
+.nf
+media-fixtitle -fs
+.fi
+.RE
+Simulation/dry run:
+.RS
+.nf
+media-fixtitle -s -f='*.mkv'
+.fi
+.RE
+Testing mode (files prefixed with "="):
+.RS
+.nf
+media-fixtitle -st
+.fi
+.RE
+.SH NOTES
+This tool does not recurse into subdirectories. It assumes \fBbash\fR, \fBsed -E\fR, \fBawk\fR, and a functioning logging/runner framework provided by \fBrun.sh\fR/\fIlogger\fR utilities.
+.SH SEE ALSO
+sed(1), awk(1), bash(1)
+.SH AUTHOR
+Adam (DrBash framework); manpage prepared from source behavior.
+.SH BUGS
+Quiet mode is not supported and will be rejected. Report issues with the exact command, environment, and data files used.
+

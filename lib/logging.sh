@@ -1,43 +1,56 @@
+# The is the logging subsystem of Dr. Bash.
+#
+# The API supports logging to the console or to the Systemd Journal
+#
+# Note: If you encouter parameters or functions labeled as "internal use only"
+#   you can use them, but be aware that they come with zero guarantee
+#   that they won't suddenly change or be removed at any time.
+
+
 [[ -n "$__logging" ]] && return
 __logging=1
 
-source "${USERLIB:=$HOME/lib}/arrays.sh"
-source "${USERLIB:=$HOME/lib}/read_stdin.sh"
+source "${DRB_LIB:=/usr/local/lib}/cli.sh"
 
 #
 # -------------------- Internal Use Only ---------------------------------------
 #
 _Log() {
-  local _msg
+  local _msg _param
 
-  if [ "$2" ]; then
-      [ "$2" == "--" ] && _msg="$(cat)" \
-                       || _msg="$2"
+  if [[ "$2" == -- ]]; then
+    _msg="$(cat)"
+    _param="$(GetParamName "$1")"; shift
+  elif [[ "$1" == -- ]]; then
+    _msg="$(cat)"
+  elif [[ "$1" =~ ^-[a-zA-Z0-9]+ ]]; then
+    _param="$(GetParamName "$1")"; shift
+    _msg="$@"
   else
-      [ "$1" == "--" ] && _msg="$(cat)" \
-                       || _msg="$1"
+    _msg="$@"
   fi
-
-  case "$1" in
-    "")
-      echo ;;
-    --)
-      echo -e "$_msg" ;;
-    -lr)
-      [ "$_msg" ] && printf "%${COLUMNS}s\n" "$_msg" || echo ;;
-    -lrn)
+  
+  case "$_param" in
+    lrn)
       [ "$_msg" ] && printf "%${COLUMNS}s" "$_msg" ;;
-    -ln)
+    lr)
+      [ "$_msg" ] && printf "%${COLUMNS}s\n" "$_msg" \
+                  || printf "\n" ;;
+    ln)
       [ "$_msg" ] && printf "%s" "$_msg" ;;
-    -l)
-      [ "$_msg" ] && printf "%s\n" "$_msg" || echo ;;
-    -n)
-      [ "$_msg" ] && echo -e "$1" "$_msg" ;;
+    l)
+      [ "$_msg" ] && printf "%s\n" "$_msg" \
+                  || printf "\n" ;;
+    n)
+      [ "$_msg" ] && printf "%b" "$_msg" ;;
+    "")
+      [ "$_msg" ] && printf "%b\n" "$_msg" \
+                  || printf "\n" ;;
     *)
-      echo -e "$_msg" ;;
+      LogError "Unrecognized option ($_param) passed to Log()" ;;
   esac
-  unset _msg
 }
+export -f _Log
 
 _Journal() {
   [ -z "$1" ] && { echo "Internal Error: logging._Journal() was called improperly!"; return 99; }
@@ -55,6 +68,27 @@ _Journal() {
     logger $param -p $logLevel "$msg"
   fi
 }
+export -f _Journal
+
+_GetCaller() {
+  local -i depth=0
+  
+  # Look for the first caller that isn't from this file
+  while [[ "${BASH_SOURCE[$depth]}" =~ logging.sh ]]; do
+    (( depth++ ))
+  done
+
+  local _file="${BASH_SOURCE[$depth]}"
+  local _func="${FUNCNAME[$depth]}"
+  local _line="${BASH_LINENO[$depth-1]}"
+
+  # 99% of the time, it won't have a path anyway
+  #   but just for uniformity's sake.
+  _file="$(basename "$_file")"
+
+  printf "%s" "$_file.${_func:-[main]}():$_line"
+}
+export -f _GetCaller
 
 #
 # -------------------- System Log / Journal ---------------------------------------
@@ -66,7 +100,7 @@ _Journal() {
 # + stdin = The message to write
 # - journalctl = The message
 Journal() {
-  _Journal user.info "$1" "$2"
+  _Journal user.info "$@"
 }
 export -f Journal
 
@@ -76,7 +110,7 @@ export -f Journal
 # + stdin = The message to write
 # - journalctl = The message
 JournalError() {
-  _Journal user.error "$1" "$2"
+  _Journal user.error "$@"
 }
 export -f JournalError
 
@@ -87,9 +121,8 @@ export -f JournalError
 # + stdout = The message
 # - journalctl = The message
 LogTee() {
-  Log "$1" "$2"
-  Journal "$1" "$2"
-  return $?
+  Log "$@"
+  Journal "$@"
 }
 export -f LogTee
 
@@ -100,9 +133,8 @@ export -f LogTee
 # + stderr = The message
 # - journalctl = The message
 LogErrorTee() {
-  LogError "$1" "$2"
-  JournalError "$1" "$2"
-  return $?
+  LogError "$@"
+  JournalError "$@"
 }
 export -f LogErrorTee
 
@@ -114,32 +146,93 @@ export -f LogErrorTee
 # Supports piped messages with or without other parameters when you specify --
 # Calling Log with no parameters will generate a newline
 # Escape sequences are interpreted by default unless you specify -l
-# + $1 = (opt) parameters to apply to the log output
-#        -- = Message is piped in
+# + $1 = (opt) INTERNAL parameters to apply to the log output
+#        -c=CODE = Print message in color
+#        -t=TITLE = Prefix TITLE to message
+#        -s=STACK = Prefix STACK to message
+# + $2 = (opt) EXTERNAL parameters to apply to log output
 #        -n = Suppress newline
 #        -l = Stop trying to be smart and output LITERALLY what I'm telling you!
 #        -ln = Literal value with no newline
 #        -lr = Literal and right-justified
 #        -lrn = Literal and right-justified with no newline
-# + $2 = The message to write or -- for stdin
+# + $3 = The message to write or -- for stdin
 # + stdin = The message to write
 # - stdout = The message
 Log() {
-  [ "$(LogQuietEnabled)" ] && return 0
-  _Log "$1" "$2"
+  LogQuietEnabled && return 0
+  
+#  LogDebugEnabled && printf "Log() called with %s parameters\n" $#  
+
+  local _msg=""
+  for p in "$@"; do
+    if [[ "$p" =~ ^-[a-zA-Z0-9]+ ]]; then
+      local pn="$(GetParamName "$p")"
+      local pv="$(GetParamValue "$p")"
+  
+      # The parameters handled here are for internal use only
+      case "$pn" in
+        c)
+          local _color="$pv"; shift ;;
+        t)
+          local _title="$pv"; shift ;;
+        s)
+          local _stack="${pv:-$(_GetCaller)}"; shift ;;
+        *)
+          if [ "$_params" ]; then
+            LogError "Internal Error: Too many parameters passed to Log()"
+            return 99;
+          else
+            local _params="-$pn"; shift 
+          fi ;;
+      esac
+    fi
+  done
+
+  _msg+="$@"
+
+  [[ "$_stack" ]] && _msg="$_stack | $_msg"
+  [[ "$_title" ]] && _msg="$_title: $_msg"
+  [[ "$_color" ]] && _msg="$(ColorText $_color "$_msg")"
+
+  _Log $_params "$_msg"
   return $?
 }
 export -f Log
 
+# Logs *exactly* what you pass in with no interpretation of anything
+# + $1 = (opt) Parameter to control how the output is presented.
+#        -n = Do not inject a newline after the message
+# + $2 = The message to log
+# + stdin = (alt) The message to write
+# - stdout = Your exact message
+LogLiteral() {
+  [ "$1" == '-n' ] && _Log -ln "$2" \
+                   || _Log -l "$1"
+}
+export -f LogLiteral
+
 # Writes the specified message to stderr
 # + $1 = (opt) parameters to apply to the echo command. -e is already applied.
+#         -x will suppress color and stack trace output
 # + $2 = The message to write (supports escaped control characters) or -- to send piped content
 # + stdin = The message to write (supports escaped control characters)
 # - stderr = The message
 LogError() {
-  _Log "$1" "$2" >&2
+  # If caller is requesting the literal message, do not attempt to set color.
+  [[ "$1" =~ l ]] || local _p1='-c=RED'
+  LogDebugEnabled && local _p2="-s="
+  Log '-t=Error' $_p1 $_p2 "$@" >&2
 }
 export -f LogError
+
+# Logs a message to stderr without all of the pomp and circumstance of LogError
+# This function is intended to be used exclusively in the situation where a function
+#   must display output and also return a value.
+LogErrorCovert() {
+  _Log "$@" >&2
+}
+export -f LogErrorCovert
 
 # Writes the specified message to the console if verbose logging is enabled
 # + $1 = (opt) parameters to apply to the echo command. -e is already applied.
@@ -148,7 +241,11 @@ export -f LogError
 # + $VERBOSE = Set to enable verbose logging
 # - stdout = The message
 LogVerbose() {
-  [ "$(LogVerboseEnabled)" ] && Log "$1" "$2" 
+  if LogVerboseEnabled; then 
+    [[ "$1" =~ l ]] || local p1='-c=PURPLE'
+    LogDebugEnabled && local p2='-s=' 
+    Log '-t=Verbose' $p1 $p2 "$@" 
+  fi
 }
 export -f LogVerbose
 
@@ -158,16 +255,26 @@ export -f LogVerbose
 # + stdin = The message to write (supports escaped control characters)
 # - stderr = The message
 LogVerboseError() {
-  [ "$(LogVerboseEnabled)" ] && LogError "$1" "$2"
+  # Explanation: There's only one reason to call this function.
+  #   You're in a situation where you want to print verbose output 
+  #   but you're in a function that also returns a value.
+  #   So you're just doing an end-run around bash's silly limitations.
+  #   Ergo, it's not truly an error.
+  #   Any legitimate error should not be hidden from the user based on log level
+  #   and thus should go through LogError().
+  LogVerboseEnabled && LogErrorCovert "$@"
 }
-export -f LogError
+export -f LogVerboseError
 
 # Writes the specified message to the console if debug logging is enabled
 # + $1 = (opt) parameters to apply to the echo command. -e is already applied.
 # + $DEBUG = Set to enable debug logging
 # - stdout = The message
 LogDebug() {
-  [ "$(LogDebugEnabled)" ]  && Log "$1" "$2"
+  if LogDebugEnabled; then
+    [[ "$1" =~ l ]] || local p1='-c=LGREEN'
+    Log '-t=Debug' '-s=' $p1 "$@"
+  fi
 }
 export -f LogDebug
 
@@ -177,81 +284,10 @@ export -f LogDebug
 # + stdin = The message to write (supports escaped control characters)
 # - stderr = The message
 LogDebugError() {
-  [ "$(LogDebugEnabled)" ] && LogError "$1" "$2"
+  # Explanation: See LogVerboseError()
+  LogDebugEnabled && LogErrorCovert "$@"
 }
-export -f LogError
-
-#
-# ------------------------ Prompts -------------------------------------------
-#
-
-# Prompts for input from the user
-# + $1 = The message to display to the user.
-# + $2 = The prompt type:
-#         1 = freeform
-#         2 = single-character selection
-#         3 = integer
-#         4 = phone number [not implemented]
-#         5 = email [not implemented]
-# + $3 = Input validation parameters
-#         selection = Name of a defined array containing all valid selections. First = default
-#         integer = MinValue-MaxValue
-#         phone = Exact number of digits (including punctuation)
-#         all others = Just enter a dash (-)
-# + $4 = (optional) Timeout value (in seconds) [not implemented]
-# - stdout = The selection
-# - return = Success (0) or
-#         1 = Input format was corrected, but none of the input data was lost.
-#         2 = Input was truncated or otherwise some portion was lost to conform to validation requirements
-#         3 = Input is invalid
-#         99 = Method was called incorrectly
-Prompt() {
-  msg="$1"
-  pType="$2"
-  case $ptype in
-    1) # freeform
-      read -p "$msg " input; LogError
-      echo "$input" ;;
-    2) # single-digit selection
-      local -n options="$3"
-      [ "${#options[@]}" == 0 ] && return 99
-      [ "${#options[0]}" != 1 ] && return 99
-      local -a optArray=(${options[0]^^})
-      for (( i=1; i<${#options[@]}; i++ )); do
-        optArray+="$${options[$i],,}"
-      done
-      optStr="$(SerializeArray -d=/ "options")"
-      read -n1 -p "$msg [$optStr]? " input; LogError 
-      echo "$input" ;;
-    3) # integer
-      local minValue="$(echo "$3" | sed -E 's/([0-9]+)-[0-9]+/\1/')"
-      local maxValue="$(echo "$3" | sed -E 's/[0-9]+-([0-9]+)/\1/')" 
-      read -p "$msg " input; LogError
-      if (( $p < $minValue )) || (( $p > $maxValue )); then
-        LogError "Value entered $input does not fall within expected range $minValue-$maxValue"
-        return 3
-      fi
-      echo "$input" ;;
-    4) # phone number
-      let numDigits=$3 ;;
-    5) # email address
-      ;;
-    *)
-      return 99 ;;
-  esac
-}
-
-PromptVewrbose() {
-  if [ "$(LogVerboseEnabled)" ]; then
-    Prompt "$@"
-  fi
-}
-
-PromptDebug() {
-  if [ "$(LogDebugEnabled)" ]; then
-    Prompt "$@"
-  fi
-}
+export -f LogDebugError
 
 #
 # -------------------- Pretty Printing ---------------------------------------
@@ -264,8 +300,9 @@ PromptDebug() {
 # + stdin = The message to write (supports escaped control characters)
 # - stdout = The message
 LogTable() {
-  Log "$1" "$2" | FormatTable
+  Log "$@" | FormatTable
 }
+export -f LogTable
 
 # Writes the specified message formatted as a table to stderr
 # Message is formatted as a table using tabs (\t) to denote columns.
@@ -274,30 +311,82 @@ LogTable() {
 # + stdin = The message to write (supports escaped control characters)
 # - stderr = The message
 LogTableError() {
-  Log "$1" "$2" | FormatTable >&2
+  LogTable "$@" >&2
 }
+export -f LogTableError
 
-# Writes the specified message in bold face to stdout.
-# Message is formatted as a table using tabs (\t) to denote columns.
-# + $1 = (opt) parameters to apply to the echo command. -e is already applied.
-# + $2 = The message to write (supports escaped control characters)
-# + stdin = The message to write (supports escaped control characters)
+# Writes the specified messages in columns to the terminal.
+# If no column width is specified, when it will be assumed to be one character wider than the longest string in the left column values.
+# + $1 = Name of an array containing the values to display in the left column
+# + $2 = Name of an array containing the values to display in the right column
+# + $3 = (optional) The width of the left column
+LogTableLiteral() {
+  local -n column1="$1"
+  local -n column2="$2"
+  local -i c1_width="$3"
+
+  # Determine left column width, if not specified
+  if [[ "$c1_width" == 0 ]]; then
+    for v in "${column1[@]}"; do
+      l=${#v}
+      (( l > c1_width )) && c1_width=$(( l + 1 ))
+    done
+  fi
+
+  # Determine total number of rows
+  numRows=${#column1[@]}
+  [[ ${#column2[@]} > $numRows ]] && numRows=${#column2[@]}
+
+  # Display the table
+  for (( i=0; i<$numRows; i++ )); do
+    c1Val="${column1[$i]}"
+    printf "%s%*s%s\n" "$c1Val" $(( c1_width - ${#c1Val} )) "${column2[$i]}"
+  done
+}
+export -f LogTableLiteral
+
+# Logs a message is the indicated color. 
+# Source this file and run ShowColors() to see your options.
+# This function is the top-level version of the inline ColorText() function.
+# + $1 = The desired color
+# + $2 = (optional) Any parameters you want to pass to Log()
+# + $3 = The message
+# - stdout = The message displayed in the specified color.
+LogColor() {
+  color=${1:-NC}
+  Log -c=$color "$2"
+}
+export -f LogColor
+
+# Gives the appearance of the passed-in text being in bold face.
+# This function is intended to be a top-level call or alternative to Log().
+# + $1 = The message to write or -- if stdin
+# + stdin = The message to write 
 # - stdout = The message
 LogHeader() {
-  Log "$(Log "$1" "$2" | Header --)"
+  [ -z "$1" ] && return 99
+  Log -c=WHITE "$1"
 }
+export -f LogHeader
 
-# Gives the appearance of the passed-in text being in bold face
+# Gives the appearance of the passed-in text being in bold face.
 # Whether this effect works or not will depend on the color pallete 
 #   of your terminal emulator. If white and light gray look the same
 #   then this function will accomplish nothing.
-# + $1 = The header/title text
-# + stdin = The header/title text (in leiu of $1)
+# This functioun is intended to be called within quoted text.
+# + $1 = The header/title text or -- if stdin.
+# + stdin = The header/title text (in leiu of $1).
 # - stdout = Your new far-more-magnanimous text!
 Header() {
-  msg="$(Log "$1")"
-  [ "$msg" ] && ColorText WHITE "$msg"
+  Log -c=WHITE -n "$1"
 }
+export -f Header
+
+# Alias for Header()
+Bold() {
+  Header "$1"
+}
+export -f Bold
 
 # Formats your tab-delimited text into a table
 # + stdin = Your complete single or multi-line text
@@ -305,26 +394,38 @@ Header() {
 FormatTable() {
   column -t -s $'\t'
 }
+export -f FormatTable
 
 # Writes the specified message in bold face to stderr
 # Message is formatted as a table using tabs (\t) to denote columns.
-# + $1 = (opt) parameters to apply to the echo command. -e is already applied.
-# + $2 = The message to write (supports escaped control characters)
-# + stdin = The message to write (supports escaped control characters)
+# + $1 = (opt) parameters to apply to the Log command.
+# + $2 = The message to write 
+# + stdin = The message to write 
 # - stderr = The message
 LogHeaderError() {
   LogError "$(Log "$1" "$2" | Header --)"
 }
+export -f LogHeaderError
 
-# Logs *exactly* what you pass in with no interpretation of anything
-# + $1 = (opt) Parameter to control how the output is presented.
-#        -n = Do not inject a newline after the message
-# + $2 = The message to log
-# - stdout = Your exact message
-LogLiteral() {
-  [ "$1" == '-n' ] && Log -ln "$2" \
-                   || Log -l "$1"
+# Prints a log message visually set apart as a quote
+# + $1 = (opt) parameters to apply to the Log command.
+# + $2 = The message to write
+# + stdin = (alt) The message to write
+# - stdout = The message
+LogQuote() {
+  local _msg _params
+
+  if [ "$2" ]; then
+    _params="$1"
+    _msg="$2"
+  else
+    _msg="$1"
+  fi
+
+  _msg=" | $_msg"
+  Log $_params "$_msg"
 }
+export -f LogQuote
 
 # Print message right-justified in the console window
 # + $1 = (opt) Parameter to control how the output is presented.
@@ -335,24 +436,42 @@ LogRight() {
   [ "$1" == '-n' ] && Log -lrn "$2" \
                    || Log -lr "$1"
 }
+export -f LogRight
 
 # Print message with an underline effect
 # Output will consume 2 rows of display
 # Line will be the same length as your text
-# + $1 = Message
-# + $2 = (opt) Character to use for the underline effect
-# - stdout = Your exact message with a row of dashes on the subsequent line
+# + $1 = (opt) Display options
+#         -c = Centered text
+# + $2 = Message
+# + $3 = (opt) Character to use for the underline effect
+# - stdout = Your exact message with a row of = on the subsequent line
 LogUnderline() {
-  msg="$(Log -l "$1")" # Pass it through any applicable filters or standard formatting
+  local msg
+  local -i pad=0
+
+  # 1. Calculate position
+  # Centered?
+  if [[ "$1" == '-c' ]]; then
+    shift
+    msg="$1"
+    [[ -z "$msg" ]] && return 1
+    pad=$(( ($COLUMNS - ${#msg}) / 2 ))
+  else
+    msg="$1"
+  fi
+
+  # 2. Print message
   if [ "$msg" ]; then
-    Log
-    Log -l "$msg"
+    printf "\n%*s%s\n" $pad "" "$msg"
+    # 3. Underline
     for (( i=0; i<${#msg}; i++ )); do
-      Log -ln "${2:--}"
+      Log -ln "${2:-=}"
     done
     Log
   fi
 }
+export -f LogUnderline
 
 #
 # -------------------- Logging Verbosity ---------------------------------------
@@ -360,7 +479,7 @@ LogUnderline() {
 
 # Enable verbose logging
 LogEnableVerbose() {
-  if [ ! $QUIET ]; then
+  if [[ ! $QUIET ]] && [[ ! $VERBOSE ]]; then
     declare -g VERBOSE=1
     LogVerbose "Verbose logging enabled"
   fi
@@ -369,23 +488,23 @@ export -f LogEnableVerbose
 
 # Ask if verbose logging has been enabled
 LogVerboseEnabled() {
-  [ $VERBOSE ] && echo "Verbose logging is enabled"
+  [[ $VERBOSE ]] && return 0 || return 1
 }
 export -f LogVerboseEnabled
 
 # Enable debug & verbose level logging
 LogEnableDebug() {
-  if [ ! $QUIET ]; then
+  if [[ ! $QUIET ]] && [[ ! $DEBUG ]]; then
     declare -g DEBUG=1
-    LogDebug "Debug logging enabled"
     LogEnableVerbose
+    LogDebug "Debug logging enabled"
   fi
 }
 export -f LogEnableDebug
 
 # Ask if debug logging has been enabled
 LogDebugEnabled() {
-  [ $DEBUG ] && echo "Debug logging is enabled"
+  [[ $DEBUG ]] && return 0 || return 1
 }
 export -f LogDebugEnabled
 
@@ -400,7 +519,7 @@ export -f LogEnableQuiet
 
 # Ask if quiet mode has been enabled
 LogQuietEnabled() {
-  [ $QUIET ] && echo -n "QuietEnabled"
+  [[ $QUIET ]] && return 0 || return 1
 }
 export -f LogQuietEnabled
 
@@ -419,16 +538,13 @@ export -f LogQuietEnabled
 #   LogParamsHelp -q=0
 #
 LogParamsHelp() {
-  declare -r FNAME="LogParamsHelp()"
-  declare -i h=1 v=1 vv=1 q=1
+  declare -i v=1 vv=1 q=1
   
   for p in "$@"; do
-    paramName=$(echo "$p" | cut -d= -f0)
-    enable=$(echo "$p" | cut -d= -f1)
+    paramName=$(GetParamName "$p")
+    enable=$(GetParamValue "$p")
 
     case $paramName in
-      -h)
-        h=$enable ;;
       -v)
         v=$enable ;;
       -vv)
@@ -436,13 +552,12 @@ LogParamsHelp() {
       -q)
         q=$enable ;;
       *)
-        LogError "$FNAME: Unknown parameter: $paramName"
+        LogError "Unknown parameter: $paramName"
         return 99 ;;
     esac
   done
 
   declare msg=""
-#  [ $h == 0 ] || msg+="\t-h\tPrint this help page"
   [ $v == 0 ] || msg+="\t-v\tVerbose output\n"
   [ $vv == 0 ] || msg+="\t-vv\tDebug mode (implies -v)\n"
   [ $q == 0 ] || msg+="\t-q\tQuiet: Suppresses all output (overrides -v and -vv)\n"
@@ -465,6 +580,7 @@ export -f LogParamsHelp
 #     Note the use of * rather than @. That's important.
 
 declare -axg LOGPARAMS=('-vv' '-v' '-q')
+export LOGPARAMS
 
 # Formats the CLI parameters handled by this script in the necessary format for use as a 'case' clause.
 # This is necessary for client scripts that want to detect invalid flags 
@@ -480,8 +596,10 @@ declare -axg LOGPARAMS=('-vv' '-v' '-q')
 shopt -s extglob    # You can turn this off after parsing the command line if you need to
 
 LogParamsCase() {
-  echo -n "$(SerializeArray -d='|' -ds -dS LOGPARAMS)"
+  caseStr="$(printf '%s | ' "${LOGPARAMS[*]}")"
+  printf '%s' "${caseStr::-2}"
 }
+export -f LogParamsCase
 
 _ParseCLI() {
   # Transparently parse certain reserved flags from CLI parameters
@@ -501,7 +619,7 @@ _ParseCLI() {
 # -------------------- Pretty Colors ---------------------------------------
 #
 
-declare -Axg COLOR=( \
+declare -Axgr COLOR=( \
   [BLACK]="\\033[0;30m" \
   [GRAY]="\\033[1;30m" \
   [PURPLE]="\\033[0;35m" \
@@ -521,25 +639,63 @@ declare -Axg COLOR=( \
   [DEFAULT]="\\033[0m" \
   [NONE]="\\033[0m" \
   [WHITE]="\\033[1;37m" )
-# There's no need to export COLOR, it's already marked global.
+export COLOR
 
 # Prints all of the available color names in their respective color.
 # - stdout = a list of colored color names. One per line.
 ShowColors() {
   for clr in "${!COLOR[@]}"; do
-    Log "$(ColorText $clr $clr)";
-  done | sort
+    if [[ "$1" == -u ]]; then
+      [[ -n "$(echo "${COLOR[$clr]}" | grep ';')" ]] && LogColor $clr "$clr"
+    else
+      LogColor $clr "$clr"
+    fi
+  done
 }
 export -f ShowColors
 
+# Corrects and validates color names against the supported set
+# + $1 = The color name
+# - retVal = Success if the color could be matched.
+# - stdout = The corrected color name
+ValidateColorName() {
+  if [ -z "$1" ]; then
+    printf "NC"
+    return 99
+  fi
+
+  # Try to figure out what color the caller is trying to identify
+  local colorName="${1^^}"
+  colorName="$(echo "$colorName" | sed -E -e 's/LIGHT\s*/L/' -e 's/GREY/GRAY/' -e 's/CIAN/CYAN/')" 
+  if [[ "${COLOR[$colorName]}" ]]; then
+    printf "$colorName"
+    return 0
+  else
+    printf "NC"
+    return 1
+  fi
+}
+export -f ValidateColorName
+
+GetColorCode() {
+#  LogDebugError "Getting color code for: $1"
+  local _cName="$(ValidateColorName "$1")"
+  [[ ! $? ]] && { printf "${COLOR[NC]}"; return 99; }
+#  LogDebugError "Validated color name: $_cName"
+  local _colorCode="${COLOR[$_cName]}"
+#  LogDebugError -l "Returning color code: $_colorCode" 
+  printf "%s" "$_colorCode"
+}
+export -f GetColorCode
+
 # Returns your text ready to be displayed in the indicated color.
+# This function must be called inline of a 'Log*' or 'printf "%b"'.
+# If you want to easily color an entire line of text, use LogColor()
 # + $1 = (optional) -e : Indicates that you need an extra escape character in order to force colors down sed's throat!
 # + $2 = The desired text color. Value must exist within the set of keys of COLOR (i.e. ${!COLOR[@]})
 # + $3 = The boring text that will soon be Fabyuloos!
 # - stdout = Your new enhanced text experience. Works seamlessly with Log(). But if using echo, don't forget the -e !
 ColorText() {
-  local -r FNAME="logging.ColorText()"
-
   # For backward-compatability reasons, 
   #   the extra escape flag can also be
   #   in the trailing position.
@@ -552,31 +708,31 @@ ColorText() {
     fi
   fi
 
-  if [ -z "$msg" ]; then
-    LogVerboseError "$FNAME: Warning: Missing msg parameter. Returning empty string."
-    echo -n ""
-    return 99
-  fi
-
   # Ensure that color is a valid choice
-  local color="${COLOR["$cName"]}"
-  if [ -z "$color" ]; then
-    LogVerboseError "$FNAME: Warning: Invalid color specified: $cName"
-    ShowColors
-    echo -n "$msg"
+  local colorCode="$(GetColorCode "$cName")"
+  if [ $? ]; then
+    if [[ -n "$msg" ]]; then
+      printf "%b" "${extraEsc}${colorCode}${msg}${extraEsc}${COLOR[NONE]}"
+    else
+      printf "%b" "$colorCode"
+    fi
+  else
+    if LogDebugEnabled; then
+      LogDebugError "Invalid color specified: $cName"
+      ShowColors >&2
+    fi
+    printf "%b" "$msg"
     return 98
   fi
-
-  echo -n "${extraEsc}${color}${msg}${extraEsc}${COLOR[NONE]}"
 }
 export -f ColorText
 
 #
-# ALL THINGS THAT ARE INVOKED AUTOMNATICALLY SHALL APPEAR BENEATH THIS TEXT!
+# ALL OF THE THINGS THAT ARE INVOKED AUTOMATICALLY SHALL APPEAR BENEATH THIS TEXT!
 #
 
 # We can't check whether we're being sourced as a condition to run
-#   becsause we're always being sourced. 
-# So, all we can do is not be harmful if we're being loaded for saome other purpose
+#   because we're always being sourced. 
+# So, all we can do is not be harmful if we're being loaded for some other purpose
 
 _ParseCLI "$@"

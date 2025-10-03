@@ -3,10 +3,10 @@
 # It is recommended to include this file and get the whole thing,
 #   especially while you're still getting used to the platform.
 #
-# To include in your script, copy/paste:
-# source ${USERLIB:-/usr/local/lib}/dr_bash.sh
+# To include this file in your script, copy/paste:
+# source ${DRB_LIB:-/usr/local/lib}/drbash.sh
 #
-# If you have chosen to locate this file elsewhere, then be sure to initialize the USERLIB variable in your .bashrc file. 
+# If you have chosen to locate this file elsewhere, then be sure to initialize the DRB_LIB variable in your ~/.bashrc file. 
 # Scripts call sudo as necessary, so you should never have to use sudo to call any library function.
 #
 # Return values:
@@ -24,26 +24,49 @@
 #       so have all of your logic in functions 
 #       and protect the main method call with IsSourced(), as provided in the template script
 #   4. Use the various Log() functions (in logging.sh) for your script's output
-#       echo should only be used for redirecting output to another command
-#       or returning values from functions,
+#       echo should be strictly avoided in the interest of preseving sanity.
+#       Use printf for redirecting output to another command or returning values from functions.
 #   5. All Log* functions support stdin via the -- parameter, 
 #        so 'echo "message" | Log --' works for all of them.
+#
+#   Crash course: printf
+#   - printf "string"   # copy string to stdout 
 
 # Prevent re-sourcing
 [ "$__drbash" ] && return 0
 __drbash=1
 
-declare -r DRBASH_VERSION=0.6
+DRB_LIB="${DRB_LIB:-/usr/local/lib}"
 
-source "${USERLIB:-.}/arrays.sh"
+# Reads $DRB_DATA/global.conf
+source "$DRB_LIB/config.sh"
+
+# Reads $DRB_DATA/media-scripts.conf
+[[ "$DRB_EDITION" == "Full" ]] && source "$DRB_MEDIA_LIB/media-config.sh"
+
+# GetParamName(), GetParamValue(), ParseParams(), etc
+source "$DRB_LIB/cli.sh"
+
+# GetDisplayFileSize(), etc.
+source $DRB_LIB/files.sh
+
+# GetChars()
+source "$DRB_LIB/string.sh"
+
+# SerializeArray(), DeserializeArray(), etc
+source "$DRB_LIB/arrays.sh"
 
 # Log(), ColorText(), SysLog(), etc.
-source "${USERLIB:-.}/logging.sh"
+source "$DRB_LIB/logging.sh"
+
+# ReadLine(), EditorLine(), TriggerLine(), Prompt(), etc.
+source "$DRB_LIB/input.sh"
 
 # Run(), Require(), HasSudo(), etc. 
-source "${USERLIB:-.}/general.sh"
+source "$DRB_LIB/general.sh"
 
-# Header(), Help(), etc.
-source "${USERLIB:-.}/help.sh"
+# Help(), etc.
+#source "$DRB_LIB/help.sh"
 
-source "${USERLIB:-.}/run.sh"
+# Run()
+source "$DRB_LIB/run.sh"

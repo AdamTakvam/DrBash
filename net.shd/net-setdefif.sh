@@ -1,7 +1,7 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/general.sh"
-source "${USERLIB:-$HOME/lib}/net.sh"
+source "${DRB_LIB:-/usr/local/lib}/general.sh"
+source "${DRB_LIB:-/usr/local/lib}/net.sh"
 declare -r APPNAME="net-setdefif"
 
 PrintHelp() {

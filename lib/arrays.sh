@@ -1,7 +1,21 @@
 [[ -n "$__arrays" ]] && return
 __arrays=1
 
-source "${USERLIB:-$HOME/lib}/logging.sh"
+source "${DRB_LIB:-/usr/local/lib}/logging.sh"
+source "${DRB_LIB:-/usr/local/lib}/cli.sh"
+source "${DRB_LIB:-/usr/local/lib}/string.sh"
+
+# Determines whether the given array contrains any useful data
+# + $1 = The name of a one-dimensional array declared in the caller's scope.
+# - retVal = 0 if array contains no data
+IsEmptyArray() {
+  [[ -z "$1" ]] && return 99
+
+  local -n _array="$1"
+
+  # Appallingly simple implementation, yet difficult to remember when you need it!
+  [[ -z "${_array[@]}" ]] && return 0 || return 1
+}
 
 # Edits each element in the given array as indicated
 # Usage: EditArray [OPTIONS] ARRAY_NAME
@@ -114,9 +128,9 @@ SerializeArray() {
   done
   
   if [ $delim_post == 0 ] && [ "$delim" != '' ]; then
-    echo "${tempStr%$delim*}"
+    printf "%s\n" "${tempStr%$delim*}"
   else
-    echo "${tempStr::-1}"
+    printf "%s\n" "${tempStr::-1}"
   fi
 }
 
@@ -198,14 +212,104 @@ SerializeArray() {
 #  done
 #}
 
-# Sorts the specified array
-# + $1 = The namne of the array variable you want to have sorted.
+# Sorts the specified array using string comparison
+#   It sorts alphabetically, but you won't like what it does with integers!
+#   If you want to sort by integers, use SortIntArray()
+# + $1 = The name of the array variable you want to have sorted.
 # - $1 = Your array will be sorted in-place. No fancy tricks needed to reassign it.
 SortArray() {
-  [ -z "$1" ] && return 1
+  [[ -z "$1" ]] && return 99
 
-  declare -n array="$1"
-  IFS=$'\n' array=($(sort <<< "${array[*]}"))
-  # printf "[%s]\n" "${array[@]}"
-  # echo "Your sorted array = ${array[@]}"
+  local -n array="$1"
+  IFS=$'\n' array=($(printf "%s\n" "${array[@]}" | sort))
+}
+
+# Sorts the specified array using full integer comparison
+#   e.g. 2, 1, 10 gets sorted as 1, 2, 10 not 1, 10, 2
+# + $1 = The name of the array variable you want to have sorted.
+# - $1 = Your array will be sorted in-place. No fancy tricks needed to reassign it.
+SortIntArray() {
+  [[ -z "$1" ]] && return 99
+
+  local -n array="$1"
+  IFS=$'\n' array=($(printf "%s\n" "${array[@]}" | sort -n))
+}
+
+
+# Adds the specified item to the specified sorted array
+# + $1 = The name of the array
+# + $2 = The item to be added
+# + $3 = 1 if you want to be able to add duplicate items
+# - retVal =  0 if item was added successfully
+#             1 if item already exists in the array
+SortedArrayAdd() {
+  [[ -z "$1" ]] || [[ -z "$2" ]] && return 99
+
+  local -n _array="$1"
+  local _newItem="$2"
+  local -i _dupes=$3
+
+  if [[ $_dupes != 1 ]]; then
+    ArrayContains "$1" "$_newItem" && return 1
+  fi
+
+  $_array+="$_newItem"
+  IFS=$'\n' _array=($(printf "%s\n" "${_array[@]}" | sort))
+}
+
+# Determines whether the given array contains at least one element matching the specified value or expression.
+#   If a match value is specified, the search will terminate after the first match.
+#   If a match expression is specified, all matches will be returned (one per line).
+# Tip: To match an element exactly, anchor the value between ^ and $ (e.g. ^exact value$).
+# + $1 =  The name of an array to search.
+# + $2 =  MATCH TERM
+#           -v=<value> - The literal value to search for (exact matches only).
+# +         -x=<regex> - The regular expression to search for. [default]
+# + $3 =  OPTIONS
+#           -i - Case-insensitive comparison
+#           -I - Exact comparison [default]
+#           -q - Suppress match result echo
+# - retVal = 0 if value is found
+ArrayContains() {
+  [[ -z "$1" ]] || [[ -z "$2" ]] && return 99
+
+  local -n _array="$1"; shift
+  local _match="$1"; shift
+  local _opt=""
+
+  # Allow options to come in as a blob or separated out
+  # We're just going to make them into a blob
+  for p in "$@"; do
+    _opt+="$(GetParamName "$p")"
+  done
+
+  # Literal or expr search?
+  local -i literal=0
+
+  local match_type="$(GetParamName "$_match")"
+  local match_value="$(GetParamValue "$_match")"
+
+  [[ "$match_type" == 'v' ]] && match_value="^$(RegexEscape "$match_value")$"  # Dress the literal as a regex for logical simplicity
+
+  # Walk the array elements and inspect each one
+  local -i found=0
+
+  for e in "${_array[@]}"; do
+    if [[ "$_opt" == *i* ]]; then                               # case-insensitive match
+      if [[ "${e,,}" =~ ${match_value,,} ]]; then               # match_value as value or expression
+        [[ "$_opt" == *q* ]] || printf "%s\n" "$e"              # output the matched value
+        found=1                                                 # Set the found flag
+        [[ "$match_type" == 'v' ]] && return 0                  # If this is a literal match, we're done here!
+      fi
+    else                                                        # case-sensitive match
+#      if [[ "$(printf "%s" "$e" | grep "$
+      if [[ "$e" =~ $match_value ]]; then                       # match_value as value or expression
+         [[ "$_opt" == *q* ]] || printf "%s\n" "$e"             # output the matched value
+        found=1                                                 # Set the found flag
+        [[ "$match_type" == 'v' ]] && return 0                  # If this is a literal match, we're done here!
+      fi
+    fi
+  done
+
+  [[ "$found" == 1 ]] && return 0 || return 1
 }

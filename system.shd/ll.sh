@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/arrays.sh"
+source "${DRB_LIB:-/usr/local/lib}/arrays.sh"
 
 declare -a passFlags=('-l')
 declare -a passPaths=()

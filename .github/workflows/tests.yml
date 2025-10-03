@@ -1,4 +1,7 @@
-name: Run logging tests
+name: Functional Tests
+
+env:
+  USERLIB: ${{ github.workspace }}/lib
 
 on:
   push:
@@ -11,9 +14,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Make test script executable
-        run: chmod +x lib/logging.tests.sh
+      - name: Make test scripts executable
+        run: chmod +x $USERLIB/test.logging.sh
+        run: chmod +x $USERLIB/test.arrays.sh
 
       - name: Run logging tests
-        run: ./lib/logging.tests.sh
+        run: $USERLIB/test.logging.sh
+
+        name: Run array tests
+        run: $USERLIB/test.arrays.sh
 

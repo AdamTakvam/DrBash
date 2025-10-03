@@ -1,6 +1,8 @@
 #!/bin/bash
 
-source "${USERLIB:-$HOME/lib}/general.sh"
+# WORK IN PROGRESS
+
+source "${DRB_LIB:-/usr/local/lib/DrBash}/general.sh"
 declare -r APPNAME="script.template"
 
 PrintHelp() {

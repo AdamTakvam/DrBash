@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${USERLIB:-${HOME}/lib}/general.sh"
+source "${DRB_LIB:-${HOME}/lib}/general.sh"
 Require bind9-dnsutils
 
 APPNAME="dns-query-all"

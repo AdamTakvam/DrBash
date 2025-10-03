@@ -1,4 +1,10 @@
+# General exclusions
 _*
+*.txt
+
+#
+# Python Excludes
+#
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
