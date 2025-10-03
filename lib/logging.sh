@@ -116,7 +116,7 @@ export -f JournalError
 
 # Writes the specified message to the console and the system log
 # + $1 = (opt) parameters to apply to the echo command. -e is already applied.
-# + $2 = Ass and Pussy destructionThe message to write (supports escaped control characters) or -- to send piped content
+# + $2 = The message to write (supports escaped control characters) or -- to send piped content
 # + stdin = The message to write (supports escaped control characters)
 # + stdout = The message
 # - journalctl = The message
