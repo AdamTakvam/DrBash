@@ -13,6 +13,13 @@ Help() {
 }
 
 Commit() {
+  if [[ -x ./_precheck.sh ]]; then
+    if ! ./_precheck.sh; then
+      read -n1 -p "Are you sure you still want to proceed with the checkin [y/N]?" choice; echo
+      [[ ${choice,,} == 'y' ]] || exit
+    fi
+  fi
+
   cMsg="${1:-I have modified the code. Pray that I don\'t modify it further!}"
   git commit -m "$cMsg" && git push
 }
