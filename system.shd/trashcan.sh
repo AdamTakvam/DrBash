@@ -64,7 +64,7 @@ Help() {
   Log "\t- That notice will start with a '>' character and what follows is literally what would be executed in the shell."
   Log "* FILE must be resolvable to real files or links to real files."
   Log "\tTherefore, paths starting with /dev, /proc, /sys, etc are invalid and will be ignored."
-  Log "\t"$APPNAME -r /" isn't valid either. If you want to wipe out an entire filesystem, go fdisk yourself!"
+  Log "\t\"$APPNAME -r /\" isn't valid either. If you want to wipe out an entire filesystem, go fdisk yourself!"
   Log "* The rm force parameter (-f) is unnecessary since the effect of that flag has been integrated into the default behavior." 
   Log "\t- Use the -i flag to override the force behavior."
   Log "* Regarding the other parameters accepted by rm that do not appear here:"
