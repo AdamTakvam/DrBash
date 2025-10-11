@@ -35,9 +35,9 @@ Help() {
 }
 
 DoInstallCommon() {
-  DRB_LIB="/usr/local/lib/DrBash"
-  DRB_SRC="/usr/local/src/DrBash"
-  DRB_ENV="/usr/local/env/DrBash"
+  DRB_LIB="/usr/local/lib/"
+  DRB_SRC="/usr/local/src/"
+  DRB_ENV="/usr/local/env/"
   DRB_BIN="/usr/local/bin"
   DRB_DATA="$HOME/.DrBash"
 
