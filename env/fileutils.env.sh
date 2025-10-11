@@ -26,7 +26,7 @@ lsdot() {
 
 # Find out which subdirectories are hogging all of the disk space.
 hog() {
-  du -hc -d1 .
+  du -hc -d1 . | grep -vE '\s\.$' | sort -hr 
 }
 
 # Show the filesystem of all mounted volumes
