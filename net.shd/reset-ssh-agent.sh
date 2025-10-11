@@ -11,7 +11,9 @@ if [ "$SSH_AGENT_PID" ]; then
   fi
 fi
 
-eval `ssh-agent -s`
+# ssh-agent -s outputs a series of variable assignment commands
+#   that are then executed by 'eval' to set up the environment.
+eval "$(ssh-agent -s)"
 
 for file in ~/.ssh/*; do
   if [ "$(grep PRIVATE "$file")" ]; then
