@@ -5,33 +5,61 @@
 
 
 # Dr. Bash v0.5
-A platform for building professional-grade Bash scripts. We make Bash beautiful in spite of itself!
-Includes a collection of scripts for basic (and not-so-basic) system administration and a whole "thing" for managing large media file repositories. 
-See the Philosophy section below for more details on what makes this repo special.
+Are you tired of the Python guys and those weird Java guys making fun of you because you're not a "real programmer"?
+Well, I am a "real programmer" who needed to do some non-trivial shell scripting one day and was appalled by so many things about the way Bash works. So I created Dr. Bash to enforce many best practices and to give your scripts not only a pile of powerful functions but also a proper structure so that it feels much more like a real programming language. 
+Unfortunately, it's still Bash. I can't make Bash fundamentally work differently, but I pushed it to its limits.
+
+ChatGPT 5 has written scripts on Dr. Bash and says it's much easier than without it. It even called the Dr. Bash libraries 'sane' and 'helpful abstractions', including some 'oddly-specific functionality'.
+
+Is there a learning curve to use Dr. Bash? Well, yeah, of course. Dr. Bash isn't just a pile of scripts. It's a platform for building professional-grade Bash scripts. But you've got the docs right here, there are lots of example scripts that get installed with it, including a very powerful media library manager that is a whole collection of scripts that work in tandem. Be sure to install the full version to get all of that.
+
+ProTip: Kick learning curves in the balls by pointing your favorite coding LLM at this README file and the ones in each of the subdirectories. It'll slurp them up and then you can just ask it whatever you want to know about how to use Dr. Bash!
 
 ## ASSumptions 
-These scripts are only intended to work correctly on Debian 12 (and derivatives thereof) with Bash 5.x. I'm not aware of any incompatibilities with Bash 4.x, but I'm not actively validating the scripts on that version, so you might run into issues. Bash 3.x is definitely not compatible.
+These scripts are only intended to work correctly on Debian (and derivatives thereof... Yes, Ubuntu is a derivative of Debian) with the latest Bash 5.x version at the time of any given release. I'm not aware of any incompatibilities with Bash 4.3+. But I'm also not actively validating the scripts on that version, so YMMV. However, I can assure you that any version of Bash older than 4.3 will cough up its own liver trying to run Dr. Bash.
 
-So, if you find a bug and you're running something else, you must verify it on this setup before logging it. Otherwise, it will fall under "ports" which is not really a thing unless you want to make it a thing. 
+Dr Bash Release             Validated Bash Version(s)
+---------------             -------------------------
+0.5                         5.2
+0.7                         5.3
 
-Basically, I'm just one guy and I'm not assuming that anyone will fall in love with this platform or motley collection of shell scripts to the point that they're motivated to make a big deal out of it by supporting everything under the sun. So it is what it is. If I'm wrong, hey, that would be cool too!
+If you find a bug and you're running something else (e.g. RedHat, Suse, etc), you must verify it on this setup before logging it. Otherwise, it will fall under "ports" which is not really a thing unless you want to make it a thing. 
+
+Basically, I'm just one guy and it's really late in the game to be writing a better shell scripting environment, so I'm not assuming that anyone will fall in love with this platform (and motley collection of shell scripts) to the point that they're motivated to make a big deal out of it by adding support for every Linux distro under the sun. So it is what it is. If I'm wrong, hey, that would be cool too!
 
 ## Installation
 
 ### For users of this project:
-* Download one of the two release types:
-  * Full = Everything
-  * Lite = Everything minus `media.shd/`
+* Download the latest released version. If you checkout the repo, some things will certainly be broken.
 * Unzip the downloaded file
-* Run `./install`
+* Run `./install full' or './install lite'
+** The only difference between full and lite is that lite does not include the media management module because it's huge and complex.
+** If you just ran './install' out of habit, then you got the full version.
 * Follow any additional instructions that the installer may provide
+** Primarily, just be sure to add the environment variables to your ~/.bashrc or wherever you like to do that sort of thing.
 
 ### For contributors to this project:
-* Clone this repo then run the ./mkbinlink script to create symlinks in `~/bin` to the executable scripts in this repo.
+* Clone this repo then run the ./mkbinlink script to create symlinks in `/usr/local/bin` to the executable scripts in this repo.
 * Ensure that `~/bin/` is in your path and Bob's your uncle. (I'm not really that old; I just think it's funny)
 * Refer to the Scripts section below for a summary of what the most significant scripts do.
 * Check for README.md files in the subdirectories for a technical description of every single script
   * If no README files exist in the subdirectories, that's because the planned tool to generate them has not been built yet
+
+### FAQ
+Q. Where on my system does this supposed 'framework' install itself?
+A. Upon installation, Dr. Bash rudely smears its own entrails across the bin/, lib/, src/, and env/ subdirectories of /usr/local/.
+
+Q. What if I already have stuff in those directories?
+A. Then you best look the F out! No, I'm kidding. In the unlikely event that you already have files with the same name in one of those directories, the install will fail without clobbering them.
+
+Q. "How do I upgrade Dr. Bash to a newer version?
+A. I have no idea. Currently, there's only one version, so you really don't need to worry about this right now.
+
+Q. How do I uninstall Dr. Bash?
+A. Very carefully. I joke but it's also true. If you've written scripts on Dr. Bash, you're pretty much married to it now. That's the thing abnout libraries and frameworks. But I get it, some people are allergiuc to awesomeness and will need it out of their space. For now, those people can delete the aforementioned directories and wash their hands of it. Eventually, there will be an ./install -u or something, but it's not high on the priority list.
+
+Q. Regarding uninstallation, what if I have other things in those directories alongside Dr. Bash?
+A. Then you won't have those things anymore. Look, once you're no longer a Dr. Bash user, you're not my problem anymore. I only care about dedicated Dr. Bash users. You can uninstall using fdisk for all I care. The point is, when you use Dr. Bash, you can experience the peace of mind that comes with having at least one person in this world care about you! The moment you decide to uninstall, you're dead to me.
 
 ## Usage
 How the scripts are used varies depending on the directory they are found in:
