@@ -9,7 +9,7 @@ if [[ "$scriptName" ]]; then
   else
     file='debug_temp.sh'
     printf "%s\n" '#!/bin/bash' > "$file"
-    printf "%s" "$@" >> "$file"
+    printf "%s" "$*" >> "$file"
     bash -x "$file"
     rm "$file"
   fi
