@@ -2,6 +2,7 @@
 
 # Unit tests for logging.sh
 
+source "${DRB_LIB:-.}/cli.sh"
 source "${DRB_LIB:-.}/logging.sh"
 source "${DRB_LIB:-.}/test.sh"
 
