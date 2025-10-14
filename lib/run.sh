@@ -1,8 +1,8 @@
 # Protect against being sourced multiple times
-[ "$__run" ] && return 0
-__run=1
+[[ -n $__run ]] && return 0
+declare -g __run=1
 
-source "${DRB_LIB:-/usr/local/lib}/general.sh"
+# source "${DRB_LIB:-/usr/local/lib}/general.sh"
 
 # Executes the specified command(s) as root if not in debug mode
 # + $1 = Optional flags

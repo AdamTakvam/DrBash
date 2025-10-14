@@ -1,5 +1,5 @@
-[[ -n "${__FILES}" ]] && return 0
-__FILES=1
+[[ -n "$__files" ]] && return 0
+declare -g __FILES=1
 
 GetDisplayFileSize() {
   [ -z "$1" ] && return

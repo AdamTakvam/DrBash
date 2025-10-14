@@ -1,3 +1,6 @@
+[[ -n $__help ]] && return 0
+declare -g __help=1
+
 # This script standdardizes the formatting of help documentation making 
 #   it as easy as possible to write and maintain CLI help, man pages, and more!
 # To avail yourself of this incredible asset, 
@@ -19,16 +22,19 @@ PrintHelp() {
   if [ "$HelpParams" ]; then
     for p in ${!HelpParams[@]}; do
       Log -n "$p "
+    done
+  fi
   Log "$(Header "FLAGS:")\t(Optional)"
   LogTable "$(LogParamsHelp)
   \t-h\tPrint this help screen.
   $HelpFlags\n"
   if [ $HelpParams ]; then 
     LogHeader "INPUT 1:"
-  Log "\t\tLong description."
-  Log
-  Log "$(Header "INPUT 2:") Short description."
-  Log
+    Log "\t\tLong description."
+    Log
+    Log "$(Header "INPUT 2:") Short description."
+    Log
+  fi
   # Optional sections include:
   #   - Concept: Explanation of the general concept or situation where one would want to run this
   #   - Dependencies: External dependencies (optional or required)

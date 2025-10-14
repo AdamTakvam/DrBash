@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${DRB_LIB:-/usr/local/lib}/run.sh"
+source "${DRB_LIB:-/usr/local/lib}/drbash.sh"
 declare -r APPNAME="sensors-color"
 
 Require lm-sensors

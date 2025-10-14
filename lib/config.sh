@@ -2,11 +2,11 @@
 # This file doesn't usually have to be sourced directly because it's sourced from other common include files.
 
 [[ $__config ]] && return 0 
-declare -r __config=1
+declare -g __config=1
 
-source "${DRB_LIB:-/usr/local/lib}/logging.sh"
+# source "${DRB_LIB:-/usr/local/lib}/logging.sh"
 
-declare -rg DRBASH_VERSION="0.7"
+declare -g DRBASH_VERSION="0.7"
 
 GetDrBashVersion() {
   echo "Dr. Bash $DRBASH_VERSION ($(GetDrBashEdition))"
