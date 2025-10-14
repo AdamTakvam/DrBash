@@ -38,35 +38,43 @@ __drbash=1
 
 DRB_LIB="${DRB_LIB:-/usr/local/lib}"
 
-# Reads $DRB_DATA/global.conf
-source "$DRB_LIB/config.sh"
-
-# Reads $DRB_DATA/media-scripts.conf
-[[ "$DRB_EDITION" == "Full" ]] && source "$DRB_MEDIA_LIB/media-config.sh"
-
-# GetParamName(), GetParamValue(), ParseParams(), etc
+# GetParamName(), GetParamValue(), ParseParams(), =(), etc
 source "$DRB_LIB/cli.sh"
 
-# GetDisplayFileSize(), etc.
-source $DRB_LIB/files.sh
-
-# GetChars()
-source "$DRB_LIB/string.sh"
-
-# SerializeArray(), DeserializeArray(), etc
-source "$DRB_LIB/arrays.sh"
-
-# Log(), ColorText(), SysLog(), etc.
-source "$DRB_LIB/logging.sh"
-
-# ReadLine(), EditorLine(), TriggerLine(), Prompt(), etc.
-source "$DRB_LIB/input.sh"
+# What is this crazy syntax?
 
 # Run(), Require(), HasSudo(), etc. 
-source "$DRB_LIB/general.sh"
+= "$DRB_LIB/general.sh"
 
-# Help(), etc.
-#source "$DRB_LIB/help.sh"
+# I don't think you can start a line with an =
 
-# Run()
-source "$DRB_LIB/run.sh"
+# Reads $DRB_DATA/global.conf
+= "$DRB_LIB/config.sh"
+
+# Wait... don't tell me = is a command! WTF?
+
+# Log(), ColorText(), SysLog(), etc.
+= "$DRB_LIB/logging.sh"
+
+# That's right bitches! I don't hear you complaining about source being .
+
+# So, Dr. Bash has it's own version of source called =. Fight me!
+
+# It doesn't matter what order the rest of them load in.
+# Loading the ones above a second time doesn't matter.
+shopt -s extglob nullglob
+declare lib
+for lib in "$DRB_LIB"/*.sh; do
+  if [[ "$(basename "$lib")" != test.* ]]; then
+    = "$lib"
+  fi
+done
+
+# Source the library files included with the media module
+if [[ "$DRB_EDITION" == "Full" ]]; then
+  for lib in "$DRB_MEDIA_LIB"/*.sh; do
+    if [[ "$(basename "$lib")" != test.* ]]; then
+      = "$lib"
+    fi
+  done
+fi    
