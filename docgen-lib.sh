@@ -1,78 +1,79 @@
 #!/usr/bin/env bash
-# Usage: ./docgen-logging.sh ./lib/logging.sh > LOGGING.md
+# Usage: ./docgen-lib.sh ./lib/logging.sh > LOGGING.md
 set -Eeuo pipefail
-
-f="${1:?path to logging.sh}"
+f="${1:?path to a Bash source file}"
 
 awk -v FILE="$f" '
-function trim(s){ sub(/^[[:space:]]+/,"",s); sub(/[[:space:]]+$/,"",s); return s }
-function split_doc(d,   i,n,lines,first,rest) {
-  n = split(d, lines, /\n/)
-  first=""; rest=""
-  for (i=1;i<=n;i++) {
-    if (trim(lines[i]) != "") { first = trim(lines[i]); break }
-  }
-  # collect remainder (skip leading empties and the first summary line)
-  skip = 1
-  seenFirst=0
-  for (i=1;i<=n;i++) {
-    line = lines[i]
-    # skip leading blank lines before the summary
-    if (!seenFirst) {
-      if (trim(line) == "") continue
-      seenFirst=1
-      # this line is the summary; skip it from body
-      continue
-    } else {
-      rest = rest line "\n"
-    }
-  }
-  return first "\t" rest
-}
-function flush(){
-  if(fn){
-    # derive summary + body
-    sb = split_doc(doc)
-    split(sb, parts, /\t/)
-    summary = parts[1]
-    body = parts[2]
-    priv = (fn ~ /^_/ ? " (private)" : "")
-    if (summary != "") {
-      print "### " fn priv " — " summary "\n"
-    } else {
-      print "### " fn priv "\n"
-    }
-    if (trim(body) != "") { print body }
-    else if (summary == "") { print "_No doc block above function._\n" }
-  }
-  doc=""; fn=""
-}
+function strip_hash_line(s) { sub(/^[[:space:]]*#[ ]?/, "", s); return s }
+
 BEGIN{
-  print "# DrBash `logging.sh` — Function Reference\n"
+  print "# Function Reference"
   print "_Source: " FILE "_\n"
+  in_func = 0; brace_depth = 0
+  doc_len = 0
 }
+
+# Collect ONLY the contiguous comment block *immediately above* a function
+/^[[:space:]]*#/ {
+  if (in_func) next                   # ignore comments inside functions
+  doc[++doc_len] = strip_hash_line($0)
+  next
+}
+
+# Blank lines are allowed inside the pending doc block
+/^[[:space:]]*$/ {
+  if (in_func) next
+  if (doc_len > 0) doc[++doc_len] = ""
+  next
+}
+
+# Any other non-comment/blank line BEFORE a function clears the pending doc
 {
-  # accumulate leading comment lines (doc block)
-  if ($0 ~ /^[[:space:]]*#/) {
-    sub(/^[[:space:]]*#[ ]?/, "", $0)   # strip first "# " cleanly
-    doc = doc $0 "\n"
-    next
+  if (!in_func && doc_len > 0) {
+    # We saw code, so that comment block wasn’t directly above a function → discard.
+    for (i in doc) delete doc[i]; doc_len = 0
   }
 
-  # tolerate blank lines inside the doc block
-  if ($0 ~ /^[[:space:]]*$/) { doc = doc "\n"; next }
+  # Detect function start (common Bash styles)
+  if (match($0, /^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*\(\)[[:space:]]*\{/, m) ||
+      match($0, /^[[:space:]]*function[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*\(\)[[:space:]]*\{/, m) ||
+      match($0, /^[[:space:]]*function[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*\{/, m)) {
 
-  # function start?
-  if ($0 ~ /^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*\(\)[[:space:]]*\{/) {
-    flush()
-    match($0, /^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*\(\)[[:space:]]*\{/, m)
     fn = m[1]
-    doc = doc "\n"
+    priv = (fn ~ /^_/ ? " (private)" : "")
+    printf("### %s%s\n\n", fn, priv)
+
+    # Emit the doc block we just collected (which sat immediately above)
+    if (doc_len > 0) {
+      for (i=1; i<=doc_len; i++) print doc[i]
+      print ""
+    } else {
+      print "_No doc block above function._\n"
+    }
+
+    # Reset the doc buffer for the next function
+    for (i in doc) delete doc[i]; doc_len = 0
+
+    # Enter function to ignore inner comments; track braces without mutating $0
+    in_func = 1
+    line = $0
+    opens  = gsub(/\{/, "", line)
+    closes = gsub(/\}/, "", line)
+    brace_depth = opens - closes
     next
   }
 
-  # any other non-comment line clears pre-collected orphan doc
-  if (doc != "" && fn == "") { doc="" }
+  # If we are inside a function, track when we leave it (ignore inner comments)
+  if (in_func) {
+    line = $0
+    opens  = gsub(/\{/, "", line)
+    closes = gsub(/\}/, "", line)
+    brace_depth += opens - closes
+    if (brace_depth <= 0) { in_func = 0; brace_depth = 0 }
+    next
+  }
+
+  # Otherwise: normal code outside functions → nothing else to do.
 }
-END{ flush() }' "$f"
+' "$f"
 
