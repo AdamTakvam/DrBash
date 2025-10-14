@@ -1,10 +1,10 @@
-[[ -n "$__input" ]] && return
-__input=1
+[[ -n $__input ]] && return
+declare -g __input=1
 
-  # Enable vi-like editing of 'read' input
-  set -o vi
+# Enable vi-like editing of 'read' input
+set -o vi
 
-  # Bind delete and backspace keys to prevent them from being able to delete things they shouldn't
+# Bind delete and backspace keys to prevent them from being able to delete things they shouldn't
 #  bind '"\C-?": forward-delete-char'    # DEL
 #  bind '"\C-h": backward-delete-char'   # BS
 
@@ -256,7 +256,7 @@ Prompt() {
       ReadChar input "$msg [$optStr]? "
       printf "%s" "$input" ;;
     3) # integer
-      IFS=- vals=($3)
+      Split 'vals' '-' "$3"     # ref: string.sh
       local -i minValue=${vals[0]}
       local -i maxValue=${vals[1]}
       ReadLine input "$msg "
