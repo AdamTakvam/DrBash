@@ -1,26 +1,88 @@
-[[ -n $__STRING ]] && return 0
-__STRING=1
+[[ -n $__string ]] && return 0
+declare -g __string=1
 
-declare -r DEFAULT_IFS=$' \t\n'
+declare -g DEFAULT_IFS=$' \t\n'
 
+#
+# Ways to avoid pissing off IFS:
+#
+# 1. Issue an actual command.
+#       myArray=($delimited_string) is NOT a command!
+#       commands are things that spawn subshells.
+#       That's how they achieve that "only for this line" behavior.
+#       Bash simply declares a local IFS in the new subshell and loads it with your value.
+#       But if there is no subshell, the local IFS gets bound to your current shell... and hilarity seldom ensues.
+#
+#       Things that create subshells:
+#           * Function calls
+#           * Anything that involves executing a file
+#           * The seashore
+#
+#       Things that do NOT create subshells:
+#           * Executing shell builtins (e.g. read, if, while, test, pwd, echo/printf, eval, etc.)
+#           * Sourcing other scripts
+#           * Variable declarations
+#           * Simple variable assignment statements
+#           * Math: (( ... ))
+#
+# 2. If the operation you want to perform does not create a subshell normally, force it to.
+#       These execution structures always create subshells:
+#           * Command substitution: result=$(builtin)
+#           * Process substitution: while ...; do ...; done < <(echo "a b c")
+#           * Pipelines: echo "a b c" | Log
+#           * Explicit subshell: (cmd; cmd)
+#           * Background tasks: cmd &
+#
+# 3. Declare IFS as a local variable: local IFS=$delim
+#       This is not unique to IFS; you can do this with any parent-scoped variable from within a function.
+#       Declaring a local IFS causes a new variable called IFS to be created and take precedence over the inherited one.
+#       The new variable automatically inherits the value of its progenitor
+#       The key difference is that any changes you make to that variable are lost when the function returns.
+#       Once the local version of a variable is created, it is no longer possible to access the parent-scoped variable from the child context.
+#
+# 4. Since you're most likely running into this issue due to a proclivity for reckless, unsupervised string parsing behavior,
+#       you can use Dr. Bash's 'Split' function (part of the string library)
+#       It saves a backup of the current IFS value, molests the hell out of it, then restores the value from the backup.
+#       Syntax: Split 'array_name' delimiter "$delimited_string"
+#
+# Note: The syntax: IFS="$delim" myArray=($delimited_string) is particularly evil due to the priority order of the lexagraphical parser within Bash. Basically, Bash will perform word-splitting on $delimited_string *before* it assigns "$delim" to IFS, meaning that the splittimg was performed using the value of IFS as it was on the previous line! So, not only does this form contaminate the local environment, it doesn't even do what it obviously is intended to do. Yes, this is undoubtedly a bug in Bash.
+
+# Resets the Internal Field Separator to its default value
 ResetIFS() {
   declare -g IFS="$DEFAULT_IFS"
 }
 
+# Determines whether the Internal Field Separator is set to its default value or not
 IsIFSDefault() {
   [[ "$IFS" == "$DEFAULT_IFS" ]] \
     && return 0 \
     || return 1
 }
 
+# Determines whether IFS will cause parameter splitting on space characters
 IsIFSaSpace() {
   [[ "${IFS::1}" == ' ' ]] \
     && return 0 \
     || return 1
 }
 
+# Escapes the characters in the given string as required to be a POSIX-compatible regex
 RegexEscape() {
   printf '%s' "$1" | sed -E 's/[][(){}.^$*+?|\\]/\\&/g'
+}
+
+# Removes any leading or trailing whitespace from ther supplied string (warning: IJW)
+# + $1 = String to trim or -- to read from stdin
+Trim() {
+  local s="$*"
+  [[ -z "$s" ]] && return 0
+  [[ "$s" == -- ]] && s="$(cat)"
+
+  # Remove leading whitespace
+  s="${s#"${s%%[![:space:]]*}"}"
+  # Remove trailing whitespace
+  s="${s%"${s##*[![:space:]]}"}"
+  printf '%s' "$s"
 }
 
 # stdin -> single-line base64 (no wraps). Trailing newline is fine;
@@ -38,10 +100,10 @@ b64_dec() { base64 -d; }
 #   Avoids accidental global IFS setting.
 #   Avoids accidental filename parameter expansion.
 # + $1 = The name of an array variable to hold the result.
-# + $2 = The delimiter character(s)
+# + $2 = The delimiter character(s) (default="$IFS")
 # + $3+ = The string to split.
 Split() {
-  [[ -z "$2" ]] && return 1
+  [[ -z "$2" ]] && return 99
 
   local -n _out="$1"; shift
   local delim="$1"; shift
@@ -51,15 +113,12 @@ Split() {
     || local IFS="$delim"
 
   set -f          # Prevents * from expanding to all files in $PWD
-#  _out=($@)
 
   if IsIFSaSpace; then
-    _out=("$1"); shift
     for p in "$@"; do
       _out+=("$p")
     done
   else
-    _out=($1); shift
     for p in $@; do
       _out+=("$p")
     done
@@ -69,6 +128,8 @@ Split() {
   return 0
 }
 
+# Specialty Function: Returns the number of times a given string appears within another.
+# Most of the time [[ "$document" == *${substring}* ]] or [[ "$document" =~ $substring ]] is all you need.
 # + $1 = The string to be searched
 # + $2 = the substring or extended regular expression to search for
 # - Returns an integer indicating the number of times the substring matched.
@@ -117,17 +178,25 @@ GetLastIndexOf() {
   return -1
 }
 
-# Breaks a string into a list of characters
-# + $1 = The string you want to break up into characters
-# + $2 = (opt) The desired intra-character delimiter (default=space) 
-# - stdout = the input string as one character per line
+# Breaks a string into a list of characters.
+# Note: If an array reference is supplied, the delimiter is ignored.
+# + $1 = The name of an array to hold the resulting characters
+# + $2 = The string you want to break up into characters
+# - stdout = the input string separated by $2
 GetChars() {
-  local str="$1"
-  local d="${2:- }"
+  local -n _out="$1" 
+  local str="$2"
 
   [ -z "$str" ] && return
 
-  while IFS= read -r -n1 c; do
-    printf "%s%s" "$c" "$d"
+  # Note: This declaration is essential to prevent changes to IFS from bleeding 
+  #   outside of this function. Setting IFS inside the 'while read' construct 
+  #   will corrupt IFS in the current shell if a local copy is not declared
+  #   because read is a shell builtin and therefore does not spawn a subshell.
+  #   which is a seldom-mentioned requirement for "temporary" variable prefixing.
+  local IFS=
+
+  while read -r -n1 c; do
+    _out+=("$c")
   done <<< "$str"
 }
