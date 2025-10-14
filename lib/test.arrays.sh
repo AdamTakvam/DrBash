@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "${DRB_LIB:-.}/cli.sh"
+source "${DRB_LIB:-.}/logging.sh"
 source "${DRB_LIB:-.}/test.sh"
 source "${DRB_LIB:-.}/arrays.sh"
 

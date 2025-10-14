@@ -1,9 +1,9 @@
 [[ -n "$__arrays" ]] && return
-__arrays=1
+declare -g __arrays=1
 
-source "${DRB_LIB:-/usr/local/lib}/logging.sh"
-source "${DRB_LIB:-/usr/local/lib}/cli.sh"
-source "${DRB_LIB:-/usr/local/lib}/string.sh"
+# source "${DRB_LIB:-/usr/local/lib}/logging.sh"
+# source "${DRB_LIB:-/usr/local/lib}/cli.sh"
+# source "${DRB_LIB:-/usr/local/lib}/string.sh"
 
 # Determines whether the given array contrains any useful data
 # + $1 = The name of a one-dimensional array declared in the caller's scope.
@@ -64,7 +64,7 @@ EditArray() {
 # Prints the given array elements as a space-delimited string.
 # + $1, $2 = (optional) formatting options:
 #               -q          Enclose each array item in quotes
-#               -d=<char>   Add <char> between each element
+#               -d=<string> Add <string> between each element
 #               -d^         Include delimiter before first element
 #               -d$         Include delimiter after last element
 #               -ds         Add a space before <char> delimiter
@@ -76,61 +76,70 @@ EditArray() {
 # - stdout = The serialized version of your array
 SerializeArray() {
   local -i quotes=0 crlf=0 sortArray=0 delim_pre=0 delim_post=0
-  local -n array        # "But the manpage says -n can't be used with arrays!"
-  local delim=''        # FALSE! It can't be used to declare an array (e.g. declare -a -n)
+  local delim='' p e            
 
-  for p in "$@"; do
-    pv="${p#*=}"         # "$(echo "$p" | cut -d= -f2)"
-    p="${p%%=*}"         # "$(echo "$p" | cut -d= -f1)"
+  local -a params=("$@")         # This is so stupid.  
+  local -n array="${params[-1]}" # The people who wrote bash are the worst coders in the world
+  unset params[-1]
 
-    case "$p" in
-      -q)
+  (( ${#array[@]} )) || return 1
+
+  for p in "${params[@]}"; do
+    local pn="$(GetParamName "$p")"  
+    local pv="$(GetParamValue "$p")"
+
+    case "$pn" in
+      q)
         quotes=1 ;;
-      -d^)
+      d^)
         delim_pre=1 ;;
-      -d$)
+      d$)
         delim_post=1 ;;
-      -ds)
+      ds)
         d1=' ' ;;
-      -dS)
+      dS)
         d3=' ' ;;
-      -d)
+      d)
         d2="$pv" ;;
-      -de | -e)
+      de | e)
         crlf=1 ;;
-      -s)
+      s)
         sortArray=1 ;;
       *)
-        [ -z "$array" ] && array="$p" ;;
+        LogError "Invalid parameter: $p" 
+        return 1 ;;
     esac
   done
 
-  [ ${#array[@]} == 0 ] && return 1
-
-  if [ $sortArray == 1 ]; then
+  if (( $sortArray )); then
     SortArray "array"
   fi
 
-  local tempStr=""
-  if [ "$d2" ]; then
-    delim=$d1$d2$d3
-    [ $delim_pre == 1 ] && tempStr="$d2$d3"
+  local resultStr=""
+  if [[ -n "$d2" ]]; then
+    delim="$d1$d2$d3"
+    (( $delim_pre )) && resultStr="$d2$d3"
   fi
 
   for e in "${array[@]}"; do
-    [ $quotes == 1 ] && tempStr+=\"
-    tempStr+="$e"
-    [ $quotes == 1 ] && tempStr+=\"
-    [ "$delim" != '' ] && tempStr+="$delim"
-    [ $crlf == 1 ] && tempStr+='
-' 
-    [ "$delim" == '' ] && [ $crlf == 0 ] && tempStr+=' '
+    (( $quotes )) && resultStr+=\"
+    resultStr+="$e"
+    (( $quotes )) && resultStr+=\"
+    if (( $crlf )); then
+      resultStr+="${delim}"
+      resultStr+=$'\n'  
+    else
+      resultStr+="${delim:- }"
+    fi
   done
   
-  if [ $delim_post == 0 ] && [ "$delim" != '' ]; then
-    printf "%s\n" "${tempStr%$delim*}"
+  if [[ -z "$delim" ]]; then
+    printf '%s\n' "${resultStr::-1}"
+  elif (( $delim_post == 0 )); then
+    # If no trailing delimiter, then remove it
+    printf '%s\n' "${resultStr%${delim}*}"
   else
-    printf "%s\n" "${tempStr::-1}"
+    printf '%s\n' "${resultStr}"
   fi
 }
 
@@ -221,7 +230,8 @@ SortArray() {
   [[ -z "$1" ]] && return 99
 
   local -n array="$1"
-  IFS=$'\n' array=($(printf "%s\n" "${array[@]}" | sort))
+  local IFS=$'\n' 
+  array=($(printf "%s\n" "${array[@]}" | sort))
 }
 
 # Sorts the specified array using full integer comparison
@@ -232,7 +242,8 @@ SortIntArray() {
   [[ -z "$1" ]] && return 99
 
   local -n array="$1"
-  IFS=$'\n' array=($(printf "%s\n" "${array[@]}" | sort -n))
+  local IFS=$'\n' 
+  array=($(printf "%s\n" "${array[@]}" | sort -n))
 }
 
 
@@ -253,8 +264,9 @@ SortedArrayAdd() {
     ArrayContains "$1" "$_newItem" && return 1
   fi
 
-  $_array+="$_newItem"
-  IFS=$'\n' _array=($(printf "%s\n" "${_array[@]}" | sort))
+  _array+="$_newItem"
+  local IFS=$'\n' 
+  _array=($(printf "%s\n" "${_array[@]}" | sort))
 }
 
 # Determines whether the given array contains at least one element matching the specified value or expression.
