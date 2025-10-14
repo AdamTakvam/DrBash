@@ -1,3 +1,6 @@
+[[ -n $__reflection ]] && return 0
+declare -g __reflection=1
+
 # Reflection functions to interrogate your own scripts
 # Why? To implement dynamic programming paradigms.
 # If that makes your head hurt, just close this file and step away. 

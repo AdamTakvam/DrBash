@@ -1,7 +1,6 @@
 #!/bin/bash
 
-source "${DRB_LIB:-/usr/local/lib}/run.sh"  # includes general.sh and logging.sh
-source "${DRB_LIB:-/usr/local/lib}/arrays.sh" 
+source "${DRB_LIB:-/usr/local/lib}/drbash.sh" 
 
 Require "trash-cli"
 
@@ -25,7 +24,7 @@ Help() {
   \t--\tIndicates that there are no more flags. Any parameters that follow are FILEs.
   \t\tOnly necessary in cases where FILE starts with a hyphen."
   Log
-  Log "FILE\tOne or more filenames or a glob patterns with relative or absolute pathing (e.g. media/*.mp4)"
+  Log "FILE\tOne or more filenames or a glob pattern with relative or absolute paths (e.g. media/*.mp4)"
   Log
   Log "Detailed Behavioral Description:"
   Log "* Default behavior:"
@@ -59,7 +58,7 @@ Help() {
   Log "\t- If -i is also specified, a confirmation prompt is included."
   Log "\t- If the file list is more than 50 items long, the list will be truncated with a notice of how many remain undisplayed."
   Log "* Debug/Simulation mode:"
-  Log "\t- In addition to maximizing verbosity, simulation mode will prevent any changes to the file system from occuring."
+  Log "\t- In addition to maximizing verbosity, simulation mode will prevent any changes to the file system from occurring."
   Log "\t- Instead of deleting files, a notice will be printed detailing the action would have been performed."
   Log "\t- That notice will start with a '>' character and what follows is literally what would be executed in the shell."
   Log "* FILE must be resolvable to real files or links to real files."
