@@ -1,3 +1,5 @@
+[[ -n $__cli ]] && return 0
+declare -g __cli=1
 
 GetParamName() {
   if [[ "$1" =~ ^- ]] && [[ "$1" != -- ]]; then
@@ -39,19 +41,38 @@ CombineParams() {
 
 # Separates combined flag parameters into an array of simple parameters
 # This makes it easier for your script to accept both forms.
-# This is an alternative to CombineParams().
-# The only real difference is which form is easiest to process in your script.
-# So far, I think this one is the clear winner. If that holds true, CombineParams() may disappear.
-# You've been warned!
-#   e.g. -typ -> - t -y -p
-# + $1 = Combined parameter
-# + $2 = Name of array to hold the individual parameter names
-SeparateParams() {
-  combined="$1"
+# This is functionally the opposite of CombineParams().
+#   e.g. -abc -> -a -b -c
+# + $1 =  Name of array to hold the individual parameter names
+# + $2+ = Combined parameters
+#         This command only acts on parameters that begin with a single dash.
+#         All others are returned in the same condition they were received.
+# - stdout = list of null-delimited parameters
+SeparateParameters() {
+  local -n _outParams="$1"; shift     # array
+  local -i _result=1
 
-  for c in $combined; do
-    echo $c
+  for param in "$@"; do
+    local tok=$(Trim $param)
+    case "$tok" in
+      --*)
+        _outParams+=("$tok") ;;
+      -*=*)
+        _outParams+=("$tok") ;;
+      -*)
+        local -a _chars=()
+        GetChars '_chars' "$tok"
+        for c in "${_chars[@]}"; do
+          if [[ $c =~ [^-\ ] ]]; then    # Don't ask questions you don't want the answer to
+            _outParams+=("-$c")
+            _result=0
+          fi
+        done ;;
+      *)
+        _outParams+=("$tok") ;;
+    esac
   done
+  return $_result
 }
 
 # Parse parameters into an assoc. array
@@ -60,12 +81,10 @@ SeparateParams() {
 # Values must be separated with an equals sign =
 # Values separated by spaces or combined with the parameter itself are NOT supported.
 # + $1 = The name of an array defined in the caller's scope to populate with flags.
-# + $2 = The name of an associative array to populate with named parameters.
+# + $2 = The name of an ASSOCIATIVE (i.e declare -A) array to populate with named parameters.
 # + $3 = The name of an array to populate with stand-alone/anonymous parameters.
-# + $4 = The name of an array to store parameters that failed to parse correctly
-# + $5 = The name of an array containing the parameters to be parsed. If you prefer to send them as a string, then:
-#           echo -n "$*" | ParseParameters 'flags', 'named', 'anon' --
-# + stdin = Source of standalone parameters (if -- specified)
+# + $4+ = The parameters to be parsed or -- to read from stdin.
+# + stdin = Source of parameters (if -- specified).
 # - retVal = Indicates whether or not the parameter list was parsed successfully.
 #
 # Parameter style   Parses As
@@ -74,64 +93,102 @@ SeparateParams() {
 # -abc              ${1[0]}=a ${1[1}]=b ${1[2]}=c 
 # -a=value          ${2[a]}=value
 # -a="v1 v2"        ${2[a]}="v1 v2"
-# --name            ${1[0]}="name"
-# --name='value'    ${2[name]}="value"
-# --                ${3[@]}=(stdin)     (separate values indicated by spaces, quotes, or line feeds
-# value1 value2     ${3[0]}="value1" ${3[1]}="value2"
+# --name            ${1[0]}=name
+# --name=value      ${2[name]}=value
+# --name="v1 v2"    ${2[name]}="v1 v2"
+# --                Substituted for the contents of stdin and parsed the same as if they were specified on the command line
+# -a --             -a + stdin is parsed the same as if it were specified on the command line
+# value1 value2     ${3[0]}=value1 ${3[1]}=value2
 # "value1 value2"   ${3[0]}="value1 value2"
 #
-# NOT supported    Why?
-# -------------    ----
-# -abc=z           Too ambuiguous. Short named arguments must be assigned individually (e.g. -a=z -b=z -c=z)
-# -name            Will be parsed as -n -a -m -e
-# --cool-name      Losing the spaces in a parameter string is a common error. Use underscore instead of hyphen in param names.
-# --abc            Anything from -- until the nerxt space or = character is treated asd a long-form parameter namer.
-# -a value         Would require client to submit a parameter schema in order to parse reliably.
-# --name value     Same
-#
+# NOT supported     Why?
+# -------------     ----
+# -abc=z            Too ambiguous. Short named arguments must be assigned individually (e.g. -a=z -b=z -c=z)
+# -name             Will be parsed as -n -a -m -e
+# --cool-name       Losing the spaces in a parameter string is a common error. Use underscore instead of hyphen in param names.
+# --abc             Anything from -- until the next space or = character is treated as a long-form parameter name.
+# -a value          Would require client to submit a parameter schema in order to parse reliably.
+# --name value      Same
+# -- value          Unlike many othe GNU tools, we simply don't roll like this. 
+#                   -- must be the last parameter and it always means "read from stdin", NOT "I'm done with the flags list".
 ParseParameters() {
-  [ -z "$4" ] && return 99
+  # Create namerefs to caller's arrays/assoc
+  local -n _FLAGS="$1"  || return 99
+  local -n _NAMED="$2"  || return 99
+  local -n _ANON="$3"   || return 99
+  shift; shift; shift; # No, it isn't equivalent to 'shift 3', thankyouverymuch
 
-  # Init function parameters first
-  local -n _flags="$1"
-  local -n _named="$2" 
-  local -n _anons="$3" 
-  shift 3
+  # -------- helpers --------
+  _is_valid_name() { 
+    [[ $1 =~ ^[A-Za-z0-9_]+$ ]]; # underscores OK; hyphens NOT OK
+  }           
+  
+  _parse_tokens() {
+    local tok
 
-  [[ "$1" == '--' ]] && local -a _params=($(cat)) \
-                     || local -a _params=("$@")
-
-  for p in "${_params[@]}"; do
-    #printf "%s\n" "p=$p"
-
-    pv="$(GetParamValue "$p")"   
-    pn="$(GetParamName "$p")" 
-
-    if [[ "$pn" =~ - ]]; then
-      # Parameter names must not contain a dash after the first character
-      _errors+=("$p")
-    elif [[ "$p" =~ ^-- ]]; then
-      if [[ "$p" == -- ]]; then
-        # Special parameter
-        _anons+=("$p")
-      else
-        # Long-form parameter
-        [[ "$pv" ]] && _named[$pn]="$pv" \
-                    || _flags+=("$pn")
+    for tok in "$@"; do
+      # "--" is NOT allowed mid-stream
+      if [[ $tok == -- ]]; then
+        LogError "-- can only appear as the last element in the parameter list."
+        return 1
       fi
-    elif [[ "$p" =~ ^- ]]; then
-      # Short parameters
-      if [[ "$pv" ]]; then
-        [[ ${#pn} == 1 ]] && _named[$pn]="$pv" \
-                          || _errors+=("$p")
+
+      local pn="$(GetParamName "$tok")"
+      local pv="$(GetParamValue "$tok")"
+
+      if [[ -n "$pn" ]]; then
+        if ! _is_valid_name "$pn"; then
+          LogError "Invalid parameter syntax: $tok"
+          return 1
+        fi
+
+        if [[ -n "$pv" ]]; then
+#          _NAMED["$pn"]="$(printf '%q' "$pv")"
+          _NAMED["$pn"]="$pv"
+        else
+          # bare flag -> goes to flags as its name (without leading --)
+          _FLAGS+=("$pn")
+          continue
+        fi
       else
-        for pc in $(printf '%s' "$pn" | grep -o .); do
-          _flags+=("$pn")
-        done
+        # Anonymous/standalone
+#        _ANON+=( "$(printf '%q' "$tok")" )
+        _ANON+=("$tok")
       fi
-    else
-      # Anon parameter
-      _anon+=("$pn")
+    done
+
+    return 0
+  }
+
+  local -a _TOKENS=()
+  SeparateParameters _TOKENS "$@"
+
+  # Build argv to parse from either a named array ($5) or stdin when $5 == "--"
+  if [[ $_TOKENS[-1] == -- ]]; then
+    unset '_TOKENS[-1]'
+    # Read stdin as a single line respecting shell-like word splitting
+    # Use read -r -a to split like the shell (handles quoted values inside the line)
+    local _line=''
+    IFS= read -r _line
+    # If multiple lines, slurp the rest appended with spaces
+    if [[ ! -t 0 ]]; then
+      local _extra
+      while IFS= read -r _extra; do
+        _line+=" $_extra"
+      done
     fi
-  done
+    # Now split into tokens using bash itself
+    _TOKENS+=(${_line})
+  fi
+
+  # Parse
+  _parse_tokens "${_TOKENS[@]}"
+  return $?
+}
+
+declare -g SOURCED_PARAM="^^^sourced^^^"
+
+# Dr. Bash's version of source or .
+=() {
+  source "$*" $SOURCED_PARAM
 }
