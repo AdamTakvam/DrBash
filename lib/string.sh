@@ -101,31 +101,19 @@ b64_dec() { base64 -d; }
 #   Avoids accidental filename parameter expansion.
 # + $1 = The name of an array variable to hold the result.
 # + $2 = The delimiter character(s) (default="$IFS")
-# + $3+ = The string to split.
+# + $3 = The string to split.
 Split() {
-  [[ -z "$2" ]] && return 99
+  local -n _out="$1"
+  local delim="$2"
+  local str="$3"
+  local IFS=
 
-  local -n _out="$1"; shift
-  local delim="$1"; shift
-
-  [[ "$delim" == '' ]] \
-    && ResetIFS \
-    || local IFS="$delim"
-
-  set -f          # Prevents * from expanding to all files in $PWD
-
-  if IsIFSaSpace; then
-    for p in "$@"; do
-      _out+=("$p")
-    done
-  else
-    for p in $@; do
-      _out+=("$p")
-    done
-  fi
-
-  set +f
-  return 0
+  _out=()
+  set -f   # disable globbing
+  while IFS="$delim" read -r -d '' field; do
+    _out+=("$field")
+  done < <(printf '%s%s' "$str" "$delim" | tr "$delim" '\0')
+  set +f   # re-enable globbing
 }
 
 # Specialty Function: Returns the number of times a given string appears within another.
