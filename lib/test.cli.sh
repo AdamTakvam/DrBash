@@ -1,56 +1,59 @@
 #!/bin/bash
 
+source "${DRB_LIB:-/usr/local/lib}/string.sh"
+source "${DRB_LIB:-/usr/local/lib}/logging.sh"
 source "${DRB_LIB:-/usr/local/lib}/cli.sh"
 source "${DRB_LIB:-/usr/local/lib}/test.sh"
 
-KeyExists() {
-  local -n _array=$1
-  local _key="$2"
-
-  if [[ -v ${_array[$key]} ]]; then
-    printf "%s" "$key"
-    return 0
-  else
-    return 1
-  fi
-}
-
 # GetParamName()
 
-SetTestName 'GetParamName -r=1'
+SetSubtestName 'GetParamName -r=1' 'a'
 AssertEqual 'r' "$(GetParamName -r=1)"
 
-SetTestName 'GetParamName -r='
+SetSubtestName 'GetParamName -r=' 'b'
 AssertEqual 'r' "$(GetParamName -r=1)"
 
-SetTestName 'GetParamName -r'
+SetSubtestName 'GetParamName -r' 'c'
 AssertEqual 'r' "$(GetParamName -r=1)"
 
-SetTestName 'GetParamName -rf'
+SetSubtestName 'GetParamName -rf' 'd'
 AssertEqual 'rf' "$(GetParamName -rf)"
 
-SetTestName 'GetParamName anonParam'
+SetSubtestName 'GetParamName anonParam' 'e'
 AssertEqual 'anonParam' "$(GetParamName anonParam)"
 
 # GetParamValue
 
-SetTestName 'GetParamValue -v'
+SetSubtestName 'GetParamValue -v' 'a'
 AssertEqual '' "$(GetParamValue -v)"
 
-SetTestName 'GetParamValue -v='
+SetSubtestName 'GetParamValue -v=' 'b'
 AssertEqual '' "$(GetParamValue -v=)"
 
-SetTestName 'GetParamValue -v=""'
+SetSubtestName 'GetParamValue -v=""' 'c'
 AssertEqual '' "$(GetParamValue -v="")"
 
-SetTestName 'GetParamValue -v=7'
+SetSubtestName 'GetParamValue -v=7' 'd'
 AssertEqual '7' "$(GetParamValue -v=7)"
 
-SetTestName 'GetParamValue -n=apple'
+SetSubtestName 'GetParamValue -n=apple' 'e'
 AssertEqual 'apple' "$(GetParamValue -n=apple)"
 
-SetTestName 'GetParamValue -n="Alissa White-Gluz"'
+SetSubtestName 'GetParamValue -n="Alissa White-Gluz"' 'f'
 AssertEqual 'Alissa White-Gluz' "$(GetParamValue -n="Alissa White-Gluz")"
+
+SetSubtestName 'SeparateParameters "a b c" -abc --help' 'a'
+declare -a params
+SeparateParameters 'params' "a b c" -abc --help
+AssertEqual 'a b c' "${params[0]}"
+SetSubtestName 'SeparateParameters "a b c" -abc --help' 'b'
+AssertEqual '-a' "${params[1]}"
+SetSubtestName 'SeparateParameters "a b c" -abc --help' 'c'
+AssertEqual '-b' "${params[2]}"
+SetSubtestName 'SeparateParameters "a b c" -abc --help' 'd'
+AssertEqual '-c' "${params[3]}"
+SetSubtestName 'SeparateParameters "a b c" -abc --help' 'e'
+AssertEqual '--help' "${params[4]}"
 
 # + $1 = The name of an array defined in the caller's scope to populate with flags.
 # + $2 = The name of an associative array to populate with named parameters.
@@ -68,58 +71,84 @@ AssertEqual 'Alissa White-Gluz' "$(GetParamValue -n="Alissa White-Gluz")"
 # value1 value2     ${3[0]}="value1" ${3[1]}="value2"
 # "value1 value2"   ${3[0]}="value1 value2"
 
-declare -a flags anonParams
+declare -a flags anonParams bad
 declare -A namedParams
-declare -i n=1
 
-SetTestName "ParseParameters -a"
-ParseParameters 'flags' 'namedParams' 'anonParams' '-a'
+Reset() {
+  flag=()
+  namedParams=()
+  anonParams=()
+  bad=()
+}
+
+SetSubtestName "ParseParameters -a" 'a'
+ParseParameters 'flags' 'namedParams' 'anonParams' -a
 AssertEqual 'a' ${flags[0]}
-flags=()
+Reset
 
-SetSubtestName 'ParseParameters -abc' 'a'
-ParseParameters 'flags' 'namedParams' 'anonParams' -abc
-AssertEqual 'a' "$(KeyExists 'flags' 'a')"
-
-SetSubtestName 'ParseParameters -abc' 'b'
-AssertEqual 'a' "$(KeyExists 'flags' 'b')"
+SetSubtestName 'ParseParameters -a -b -c' 'b'
+ParseParameters 'flags' 'namedParams' 'anonParams' -a -b -c
+AssertEqual '3' ${#flags[@]}
+Reset
 
 SetSubtestName 'ParseParameters -abc' 'c'
-AssertEqual 'a' "$(KeyExists 'flags' 'c')"
-flags=()
+ParseParameters 'flags' 'namedParams' 'anonParams' -abc
+AssertEqual '3' ${#flags[@]}
+Reset
 
-SetSubtestName 'ParseParameters -a xyz' 'a'
-AssertEqual '1' "${#flags[@]}"
-flags=()
+SetSubtestName 'ParseParameters -a=1' 'd'
+ParseParameters 'flags' 'namedParams' 'anonParams' -a=1
+AssertEqual '1' "${namedParams[a]}"
+Reset
 
-SetSubtestName 'ParseParameters -a=xyz' 'a'
-ParseParameters 'flags' 'namedParams' 'anonParams' -a=xyz
-AssertEqual 'a' "$(KeyExists 'flags' 'a')"
+SetSubtestName 'ParseParameters -a="1 2"' 'e'
+ParseParameters 'flags' 'namedParams' 'anonParams' -a="1 2"
+AssertEqual '1 2' "${namedParams[a]}"
+Reset
 
-SetSubtestName 'ParseParameters -a=xyz' 'b'
-AssertEqual 'xyz' "${flags[a]}"
+SetSubtestName "echo \"-abc '1 2'\" | ParseParameters --" 'f'
+echo "-abc 1 2" | ParseParameters 'flags' 'namedParams' 'anonParams' --
+AssertEqual '3' ${#flags[@]}
+AssertEqual '1 2' "${anonParams[0]}"
+Reset
 
-SetSubtestName 'ParseParameters -a=xyz' 'c'
-AssertEqual '1' "${#flags[@]}"
-flags=()
+SetSubtestName 'ParseParameters --name' 'g'
+ParseParameters 'flags' 'namedParams' 'anonParams' --name
+AssertEqual 'name' "${flags[0]}"
+Reset
+
+SetSubtestName 'ParseParameters --name="1 2"' 'h'
+ParseParameters 'flags' 'namedParams' 'anonParams' --name="1 2"
+AssertEqual '1 2' "${namedParams[name]}"
+Reset
+
+SetSubtestName 'ParseParameters a' 'i'
+ParseParameters 'flags' 'namedParams' 'anonParams' a
+AssertEqual 'a' "${anonParams[0]}"
+Reset
+
+SetSubtestName 'ParseParameters "a b"' 'j'
+ParseParameters 'flags' 'namedParams' 'anonParams' "a b"
+AssertEqual 'a b' "${anonParams[0]}"
+Reset
 
 # CombineParams()
-SetTestName "CombineParams '-a -b -c'"
-AssertEqual '-abc' "$(CombineParams '-a -b -c')"
+SetSubtestName 'CombineParams -a -b -c' 'a'
+AssertEqual '-abc' "$(CombineParams -a -b -c)"
 
-SetTestName "CombineParams '-ab -c'"
-AssertEqual '-abc' "$(CombineParams '-ab -c')"
+SetSubtestName 'CombineParams -ab -c' 'b'
+AssertEqual '-abc' "$(CombineParams -ab -c)"
 
-SetTestName "CombineParams '-a -b -c zyx 123'"
-AssertEqual '-abc zyx 123' "$(CombineParams '-a -b -c xyz 123')"
+SetSubtestName 'CombineParams -a -b -c zyx 123' 'c'
+AssertEqual '-abc zyx 123' "$(CombineParams -a -b -c xyz 123)"
 
-SetTestName "CombineParams '-a -b -c zyx 123 --'"
-AssertEqual '-abc zyx 123 --' "$(CombineParams '-a -b -c xyz 123 --')"
+SetSubtestName 'echo "xyz 123" | CombineParams -a -b -c --' 'd'
+AssertEqual '-abc zyx 123' "$(echo "xyz 123" | CombineParams -a -b -c --)"
 
-SetTestName "CombineParams '-a=1 -b -c zyx 123'"
-AssertEqual '-a=1 -bc zyx 123' "$(CombineParams '-a=1 -b -c zyx 123')"
+SetSubtestName 'CombineParams -a=1 -b -c zyx 123' 'e'
+AssertEqual '-a=1 -bc zyx 123' "$(CombineParams -a=1 -b -c zyx 123)"
 
-SetTestName "CombineParams '-a=1 -b -c zyx 123 --longname'"
-AssertEqual '-a=1 -bc zyx 123 --longname' "$(CombineParams '-a=1 -b -c zyx 123 --longname')"
+SetSubtestName 'CombineParams -a=1 -b -c --longname zyx 123' 'f'
+AssertEqual '-a=1 -bc --longname zyx 123' "$(CombineParams -a=1 -b -c --longname zyx 123)"
 
 exit $fail
