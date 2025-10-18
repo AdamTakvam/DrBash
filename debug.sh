@@ -1,5 +1,11 @@
 #!/bin/bash
-export PS4='${BASH_SOURCE[0]}:$LINENO '
+
+set -o errexit
+set -o errtrace
+set -o nounset
+set -o pipefail
+
+export PS4='${BASH_SOURCE[0]}:${FUNCNAME[0]}():$LINENO: '
 
 scriptName="$1"
 
