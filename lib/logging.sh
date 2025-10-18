@@ -8,9 +8,9 @@
 
 
 [[ -n "$__logging" ]] && return
-__logging=1
+declare -g __logging=1
 
-source "${DRB_LIB:=/usr/local/lib}/cli.sh"
+# source "${DRB_LIB:=/usr/local/lib}/cli.sh"
 
 #
 # -------------------- Internal Use Only ---------------------------------------
@@ -345,7 +345,7 @@ LogTableLiteral() {
 }
 export -f LogTableLiteral
 
-# Logs a message is the indicated color. 
+# Logs a message is the indicated color (by name). 
 # Source this file and run ShowColors() to see your options.
 # This function is the top-level version of the inline ColorText() function.
 # + $1 = The desired color
@@ -354,9 +354,26 @@ export -f LogTableLiteral
 # - stdout = The message displayed in the specified color.
 LogColor() {
   color=${1:-NC}
-  Log -c=$color "$2"
+  Log -c=$color "$2" "$3"
 }
 export -f LogColor
+
+# Logs a message in the indicated color (by code)
+# This function is the top-level version of the inline ColorTextCSB() function.
+# + $1 = 30-37 : Color code
+# + $2 = 0-7 : Style code
+# + $3 = 40-47 : Background color code
+# + $4 = The message
+# - stdout = The message with the specified color, style, and background applied
+LogColorCSB() {
+  color="$1"
+  style="$2"
+  bgrnd="$3"
+  msg="$4"
+
+  Log "$(ColorTextCSB "$color" "$style" "$bgrnd" "$msg")"
+}
+export -f LogColorCSB
 
 # Gives the appearance of the passed-in text being in bold face.
 # This function is intended to be a top-level call or alternative to Log().
@@ -588,7 +605,7 @@ export LOGPARAMS
 # They need to know to ignore these so that they aren't throwing an error when someone passes in a -v
 # Example Usage:
 #   case $a in
-#     *($(LogParamsCase))* )
+#     $(LogParamsCase) )
 #       : ;;    # Ignore
 #   esac
 # Note: This usage requires extended globs to be enabled
@@ -596,7 +613,7 @@ export LOGPARAMS
 shopt -s extglob    # You can turn this off after parsing the command line if you need to
 
 LogParamsCase() {
-  caseStr="$(printf '%s | ' "${LOGPARAMS[*]}")"
+  caseStr="$(printf '%s | ' "${LOGPARAMS[@]}")"
   printf '%s' "${caseStr::-2}"
 }
 export -f LogParamsCase
@@ -619,40 +636,158 @@ _ParseCLI() {
 # -------------------- Pretty Colors ---------------------------------------
 #
 
+PrintColorHelp() {
+  LogHeader "Colors:"
+  LogTable "\tCode\tColor
+    \t30\tBLACK
+    \t31\tRED
+    \t32\tGREEN
+    \t33\tBROWN
+    \t34\tBLUE
+    \t35\tPURPLE
+    \t36\tCYAN
+    \t37\tLGRAY"
+  Log
+  LogHeader "Styles:"
+  LogTable "\tCode\tEffect
+    \t0\tNothing / Standard
+    \t1\tIncrease brightness (except BLACK)
+    \t2\tDecrease brightness (except BLACK)
+    \t3\tItalics
+    \t4\tUnderline
+    \t5\tBlinking (stops after a little while)
+    \t6\tBlinking (identical to 5)
+    \t7\tInverse foreground/background colors (except when the same color)"
+  Log
+  LogHeader "Backgrounds:"
+  Log "\t40-47\tMap to 30-37 (e.g. a red background would be 41)"
+}
+
 declare -Axgr COLOR=( \
   [BLACK]="\\033[0;30m" \
-  [GRAY]="\\033[1;30m" \
-  [PURPLE]="\\033[0;35m" \
-  [BLUE]="\\033[0;34m" \
-  [CYAN]="\\033[0;36m" \
   [RED]="\\033[0;31m" \
-  [GREEN]="\\033[0;32m" \
   [LRED]="\\033[1;31m" \
-  [LPURPLE]="\\033[1;35m" \
+  [DRED]="\\033[2;31m" \
+  [IRED]="\\033[3;31m" \
+  [URED]="\\033[4;31m" \
+  [BRED]="\\033[5;31m" \
+  [GREEN]="\\033[0;32m" \
   [LGREEN]="\\033[1;32m" \
+  [DGREEN]="\\033[2;32m" \
+  [IGREEN]="\\033[3;32m" \
+  [UGREEN]="\\033[4;32m" \
+  [BGREEN]="\\033[5;32m" \
+  [YELLOW]="\\033[0;33m" \
+  [LYELLOW]="\\033[1;33m" \
+  [DYELLOW]="\\033[2;33m" \
+  [IYELLOW]="\\033[3;33m" \
+  [UYELLOW]="\\033[4;33m" \
+  [BYELLOW]="\\033[5;33m" \
+  [BLUE]="\\033[0;34m" \
   [LBLUE]="\\033[1;34m" \
+  [DBLUE]="\\033[2;34m" \
+  [IBLUE]="\\033[3;34m" \
+  [UBLUE]="\\033[4;34m" \
+  [BBLUE]="\\033[5;34m" \
+  [PURPLE]="\\033[0;35m" \
+  [LPURPLE]="\\033[1;35m" \
+  [DPURPLE]="\\033[2;35m" \
+  [IPURPLE]="\\033[3;35m" \
+  [UPURPLE]="\\033[4;35m" \
+  [BPURPLE]="\\033[5;35m" \
+  [CYAN]="\\033[0;36m" \
   [LCYAN]="\\033[1;36m" \
-  [BROWN]="\\033[0;33m" \
-  [YELLOW]="\\033[1;33m" \
+  [DCYAN]="\\033[2;36m" \
+  [ICYAN]="\\033[3;36m" \
+  [UCYAN]="\\033[4;36m" \
+  [BCYAN]="\\033[5;36m" \
   [LGRAY]="\\033[0;37m" \
+  [WHITE]="\\033[1;37m" \
+  [DGRAY]="\\033[2;37m" \
+  [IGRAY]="\\033[3;37m" \
+  [UGRAY]="\\033[4;37m" \
+  [BGRAY]="\\033[5;37m" \
   [NC]="\\033[0m" \
   [DEFAULT]="\\033[0m" \
-  [NONE]="\\033[0m" \
-  [WHITE]="\\033[1;37m" )
+  [NONE]="\\033[0m" )
 export COLOR
 
+# Prints every possible font style option available in Bash
+ShowAllFontStyles() {
+  local nc="$(CreateFontCode)"
+  for s in {0..7}; do 
+    for c in {30..37}; do 
+      for b in {40..47}; do
+        # Get font code
+        local fc="$(CreateFontCode $c $s $b)"
+        # Apply style
+        Log -n "$fc"
+        # Show literal sequence text (escaped backslash)
+        Log -ln "$fc"
+        # Reset and space
+        Log -n "$nc "
+      done
+      Log
+    done
+  done
+}
+
+# Generates the ASCII font code for any valid style specification.
+# So you need to run it through a Log or Log -n for it to actually work.
+# + $1 = 30-37 : Color code
+# + $2 = 0-7 : Style code
+# + $3 = 40-47 : Background color code
+CreateFontCode() {
+  local -i color=${1:-0}
+  local -i style=${2:-0}
+  local -i bgrnd=${3:-0}
+ 
+  # Handle special case
+  if (( $color + $style + $bgrnd == 0 )); then
+    printf '%s' "\e[0m"
+    return 0
+  fi
+
+  # Correct invalid params to something that works
+  if [[ $color < 30 || $color > 37 ]]; then
+    color=$(( (color % 7) + 31 ))
+  elif [[ $style < 0 || $style > 7 ]]; then
+    style=$(( style % 7 ))
+  elif [[ $bgrnd < 40 || $bgrnd > 47 ]]; then
+    bgrnd=$(( (bgrnd % 8) + 40 ))
+  fi
+  
+  printf '\\e[%d;%d;%dm' $style $color $background
+}
+
 # Prints all of the available color names in their respective color.
+# + $1 = 0: All colors (default) | 1: Pretty colors only
 # - stdout = a list of colored color names. One per line.
 ShowColors() {
-  for clr in "${!COLOR[@]}"; do
-    if [[ "$1" == -u ]]; then
-      [[ -n "$(echo "${COLOR[$clr]}" | grep ';')" ]] && LogColor $clr "$clr"
-    else
-      LogColor $clr "$clr"
-    fi
+  local -i prettyColorsOnly=${1:-0}
+  local -i printInColor=${2:-1}
+
+  local -a _colors;
+  [[ $prettyColorsOnly == 1 ]] && _colors=($(_GetPrettyColors)) || _colors=(${!COLOR[@]})
+
+  for clr in "${_colors[@]}"; do
+    [[ $printInColor == 0 ]] && Log "$clr" || LogColor $clr "$clr"
   done
 }
 export -f ShowColors
+
+# Internal Function: 
+# Prints a non-colored list of the colors that are visible on a black background and omitting duplicates.
+# If you want this, call the public function 'ShowColors 1 0' instead
+# - stdout = A list of color names
+_GetPrettyColors() {
+  for clr in "${!COLOR[@]}"; do
+    case "$clr" in 
+      GRAY | BLACK | NC | NONE) ;; 
+      *) LogLiteral -n "$clr " ;; 
+    esac
+  done
+}
 
 # Corrects and validates color names against the supported set
 # + $1 = The color name
@@ -727,12 +862,29 @@ ColorText() {
 }
 export -f ColorText
 
-#
-# ALL OF THE THINGS THAT ARE INVOKED AUTOMATICALLY SHALL APPEAR BENEATH THIS TEXT!
-#
+# Colors text like the ColorText function does, except this one takes
+#   integers that define the exact text attributes to be applied.
+# + $1 = 30-37 : Color code
+# + $2 = 0-7   : Style code
+# + $3 = 40-47 : Background color code
+# + $4 = Your bomb-ass message
+# - retVal = 0 : Success | 1 : Failure
+ColorTextCSB() {
+  local -i color=$1
+  local -i style=$2
+  local -i bgrnd=$3
+  local msg="$4"
+  [[ -z "$msg" ]] && return 1
 
-# We can't check whether we're being sourced as a condition to run
-#   because we're always being sourced. 
-# So, all we can do is not be harmful if we're being loaded for some other purpose
+  local effectCode="$(CreateFontCode $color $style $bgrnd)"
+  [[ $? ]] || return 1
 
-_ParseCLI "$@"
+  printf "%b" "${effectCode}${msg}${COLOR[NONE]}" 
+
+  return 0
+}
+
+# This function is called when this file is sourced
+_LogMain() {
+  _ParseCLI "$@"
+}
