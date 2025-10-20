@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${DRB_LIB:-/usr/local/lib}"/general.sh
+source "$DRB_LIB/drbash.sh"
 
 Requires fdupes
 declare -r APPNAME='deduper'
