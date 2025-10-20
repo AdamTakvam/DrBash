@@ -8,28 +8,25 @@ declare APPNAME="process-media"
 
 PrintHelp() {
   tabs 4
-  Log "Wrapper script to run media filename normalization and tagging scripts."
+  Log "Wrapper script to run media filename normalization and tagging scripts on all files in the \$DRB_MEDIA_STAGING directory."
   Log
-  Log "$(Header "Usage:") $APPNAME [FLAG] [FILE...]"
+  Log "$(Header "Usage:") $APPNAME [FLAG]"
   Log
   LogHeader "FLAGS: (optional)"
   LogTable "\t-v\tVerbose logging
     \t-vv\tDebug mode
     \t-*\tAnything that is valid for media-fixtitles and media-fixtags."
   Log
-  LogTable "$(Header "FILE:")\t(optional) One or more files to process. 
-  \tIf the path doesn't start with /, then it will be assumed to be relative to $DRB_MEDIA.
-  \tDefault = All files in the \$DRB_MEDIA_STAGING directory."
-  Log
   LogHeader "Environment Variables:"
-  Log "\tDRB_MEDIA\tThe path of the media archive for this type of media"
-  Log "\t\t\t\tIf not set, will be set to the parent of the directory you're running this tool from."
-  Log "\tDRB_MEDIA_EXTS\tThe extensions of your media files (without the dot)." 
-  Log "\t\t\t\tIf not set, will be set to 'mp4 avi'."
+  LogTable "\tDRB_MEDIA_STAGING\tThe directory where new files are kept for processing.
+  \tDRB_MEDIA_REPO\tThe path of the media archive for this type of media.
+  \t\tIf not set, will be set to the parent of the \$DRB_MEDIA_STAGING directory.
+  \tDRB_MEDIA_EXTS\tThe extensions of your media files (without the dot). 
+  \t\tIf not set, will be set to 'mp4 avi'."
   Log
 }
 
-declare -a flags targetFiles
+declare -a flags
 
 ParseCLI() {
   for p in "$@"; do
@@ -39,8 +36,6 @@ ParseCLI() {
         exit 0 ;;
       -*)
         flags+=($p) ;;
-      *)
-        targetFiles+=("$p") ;;
     esac
   done
 }
@@ -90,10 +85,10 @@ Log "Setting file permissions in $PWD to (o+rw,g+rw,a+r)"
 sudo chmodt f u+rw,g+r,o+r
 
 echo "-------------------- Fix Titles -----------------------"
-Run -u media-fixtitle ${flags[@]} "${targetFiles[@]}" || exit $?
+Run -u media-fixtitle ${flags[@]} || exit $?
 
 echo "--------------------- Fix Tags ------------------------"
-Run -u media-fixtags ${flags[@]} "${targetFiles[@]}" || exit $?
+Run -u media-fixtags ${flags[@]} || exit $?
 
 # TODO: Auto-tagging via keywords in title
 
@@ -106,4 +101,4 @@ Run -u media-fixtags ${flags[@]} "${targetFiles[@]}" || exit $?
 
 Log "---------------- Merge Files Into Repo --------------------"
 ### Merge files from staging area into main archive
-Run -r media-merge "${targetFiles[@]}"
+Run -r media-merge
