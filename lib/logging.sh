@@ -353,25 +353,29 @@ export -f LogTableLiteral
 # + $3 = The message
 # - stdout = The message displayed in the specified color.
 LogColor() {
+  [[ "$1" == -* ]] && { local logParam="$1"; shift; }
   color=${1:-NC}
-  Log -c=$color "$2" "$3"
+  Log $logParam -c=$color "$2" "$3"
 }
 export -f LogColor
 
 # Logs a message in the indicated color (by code)
 # This function is the top-level version of the inline ColorTextCSB() function.
-# + $1 = 30-37 : Color code
-# + $2 = 0-7 : Style code
-# + $3 = 40-47 : Background color code
-# + $4 = The message
+# + $1 = (optional) Log parameter
+# + $2 = 30-37 : Color code
+# + $3 = 0-7 : Style code
+# + $4 = 40-47 : Background color code
+# + $5 = The message
 # - stdout = The message with the specified color, style, and background applied
 LogColorCSB() {
-  color="$1"
-  style="$2"
-  bgrnd="$3"
-  msg="$4"
+  [[ "$1" == -* ]] && { local logParam="$1"; shift; }
 
-  Log "$(ColorTextCSB "$color" "$style" "$bgrnd" "$msg")"
+  local -i color="$1"
+  local -i style="$2"
+  local -i bgrnd="$3"
+  local msg="$4"
+
+  Log $logParam "$(ColorTextCSB "$color" "$style" "$bgrnd" "$msg")"
 }
 export -f LogColorCSB
 
@@ -741,7 +745,7 @@ CreateFontCode() {
   local -i color=${1:-0}
   local -i style=${2:-0}
   local -i bgrnd=${3:-0}
- 
+
   # Handle special case
   if (( $color + $style + $bgrnd == 0 )); then
     printf '%s' "\e[0m"
@@ -757,7 +761,7 @@ CreateFontCode() {
     bgrnd=$(( (bgrnd % 8) + 40 ))
   fi
   
-  printf '\\e[%d;%d;%dm' $style $color $background
+  printf '\\e[%d;%d;%dm' $style $color $bgrnd
 }
 
 # Prints all of the available color names in their respective color.
