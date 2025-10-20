@@ -1,6 +1,8 @@
 #!/bin/bash
 
+source "${DRB_LIB:-/usr/local/lib}/cli.sh"
 source "${DRB_LIB:-/usr/local/lib}/arrays.sh"
+source "${DRB_LIB:-/usr/local/lib}/logging.sh"
 
 declare -a passFlags=('-l')
 declare -a passPaths=()
