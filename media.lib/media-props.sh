@@ -1,41 +1,57 @@
 [[ -n "${__media_props}" ]] && return 0
 __media_props=1
 
-source "${DRB_LIB}/logging.sh"
+# source "${DRB_LIB}/logging.sh"
+# source "${DRB_LIB}/run.sh"
 
 # 7680 x 4320 = 33,177,600 (8K)
-declare -ir min_8k=20736000
+declare -irg min_8k=20736000
 # 3840 x 2160 = 8,294,400 (4K)
-declare -ir min_4k=5990400
+declare -irg min_4k=5990400
 # 2560 x 1440 = 3,686,400 (1440p)
-declare -ir min_1440=2880000
+declare -irg min_1440=2880000
 # 1920 x 1080 = 2,073,600 (1080p)
-declare -ir min_1080=1497600
+declare -irg min_1080=1497600
 # 1280 x 720 = 921,600 (720p)
-declare -ir min_720=614400
+declare -irg min_720=614400
 # 640 x 480 = 307,200 (480p)
-declare -ir min_480=240000
+declare -irg min_480=240000
 # 480 x 320 = 172,800 (320p)
-declare -ir min_320=129600
+declare -irg min_320=129600
 # 360 x 240 = 86,400 (240p)
 
-# Creates a resolution tag
-# $1 = file name
-# output = rez
+
+# Creates a resolution tag for a file
+# + $1 = File name
+# - stdout = Resolution tag (e.g. "4k", "1080p", etc)
 GetResolution() {  
   Requires exiftool
   
   local -r file="$1"
-  local -a rezArr
-  IFS=$'\n' rezArr=($(exiftool -ImageHeight -ImageWidth "$file" | awk '{ printf $4"\n" }'))
+  [[ -z "$file" ]] && return 99
+
+  local IFS=$'\n' 
+  local -a rezArr=($(Run -u exiftool -ImageHeight -ImageWidth "$file" | awk '{ printf $4"\n" }'))
   if [ "${#rezArr[@]}" != 2 ]; then
-    LogError "\n$(ColorText YELLOW "Unable to read resolution from: $file (no data)")"
+    LogError "Unable to read resolution from: $file (no data)"
     return 1
   fi
 
-  LogVerboseError "\nResolution: ${rezArr[0]} x ${rezArr[1]}"
+  _GetResolution ${rezArr[0]} ${rezArr[1]}
+}
 
-  local -i rez=$(( ${rezArr[0]} * ${rezArr[1]} ))
+# Creates a resolution tag based on the frame geometry on a video
+# + $1 = Frame width (no commas!)
+# + $2 = Frame height (no commas!)
+# - stdout = Resolution tag (e.g. "4k", "1080p", etc)
+_GetResolution() {
+  local -i w=$1
+  local -i h=$2
+  [[ $w == 0 || $h == 0 ]] && return 99
+
+  LogVerboseError "Resolution: $w x $h"
+
+  local -i rez=$(( w * h ))
 
   if (( $rez > $min_8k )); then
     echo "8k"
@@ -103,9 +119,9 @@ DisplayMediaProperties() {
   w="$(echo "${w:1}" | sed -E 's/([0-9]) ([0-9]+)/\1,\2/')"
 
   if [[ "$_compact" == 1 ]]; then
-    w="$(echo "$w" | cut -d' ' -f1)"              # Remove "pixels"
-    h="$(echo "$h" | cut -d' ' -f1)"
-    Log "\t${s} | ${d} | ${w} x ${h}"
+    w="$(echo "$w" | cut -d' ' -f1 | sed 's/,//')"              # Remove "pixels"
+    h="$(echo "$h" | cut -d' ' -f1 | sed 's/,//')"
+    Log "\t${s} | ${d} | ${w} x ${h} ($(_GetResolution $w $h))"
   else
     LogTable "\tSize\t$s
       \tDuration\t$d

@@ -1,7 +1,7 @@
 [[ -n "$__playlist" ]] && return
-__playlist=1
+declare -g __playlist=1
 
-source "${DRB_LIB:-/usr/local/lib}/general.sh"
+# source "${DRB_LIB:-/usr/local/lib}/general.sh"
 
 # The functions starting with underscaore are intended for internal use only
 PlaylistHelp() {

@@ -2,13 +2,13 @@
 # This file doesn't usually have to be sourced directly because it's sourced from other common include files.
 
 [[ $__mediaconfig ]] && return 0 
-declare -r __mediaconfig=1
+declare -g __mediaconfig=1
 
-source "${DRB_LIB:-/usr/local/lib}/config.sh"
-source "${DRB_LIB:-/usr/local/lib}/logging.sh"
+# source "${DRB_LIB:-/usr/local/lib}/config.sh"
+# source "${DRB_LIB:-/usr/local/lib}/logging.sh"
 
 SourceMediaConfigFile() {
-  declare -g MEDIA_CONFIG_FILE="$(ConfigGet_DATA)/media-scripts.conf"
+  declare -rg MEDIA_CONFIG_FILE="$(ConfigGet_DATA)/media-scripts.conf"
   
   if [ -r "$MEDIA_CONFIG_FILE" ]; then
     source "$MEDIA_CONFIG_FILE"
@@ -27,14 +27,14 @@ MediaConfigFile() {
 # --------------- media-scripts.conf -----------------------
 
 # Default values
-declare -r _MEDIA_USER_DEF="$(whoami)"
-declare -r _MEDIA_GROUP_DEF="users"
-declare -r _MEDIA_REPO_DEF='~/Videos'
-declare -r _MEDIA_STAGING_DEF="$_MEDIA_REPO_DEF/Staging"
-declare -r _MEDIA_EXTS_DEF='mp4 avi'
-declare -r _MEDIA_COMPACT_DEF=true
-declare -r _MEDIA_REPOSEARCH_DEF=true
-declare -r _MEDIA_PLAYLISTS_DEF='~/Videos/Playlists'
+declare -rg _MEDIA_USER_DEF="$(whoami)"
+declare -rg _MEDIA_GROUP_DEF="users"
+declare -rg _MEDIA_REPO_DEF='~/Videos'
+declare -rg _MEDIA_STAGING_DEF="$_MEDIA_REPO_DEF/Staging"
+declare -rg _MEDIA_EXTS_DEF='mp4 avi'
+declare -rg _MEDIA_COMPACT_DEF=true
+declare -rg _MEDIA_REPOSEARCH_DEF=true
+declare -rg _MEDIA_PLAYLISTS_DEF='~/Videos/Playlists'
 
 # The user to save new media files under
 ConfigGet_MEDIA_USER() {
@@ -96,17 +96,19 @@ ConfigSet_MEDIA_PLAYLISTS() {
 
 # --------------- Special Config Files -----------------------
 
-declare -r FILE_ABBR="${DRB_DATA:-.}/media-fixtitle-abbr.shdata"
-declare -r FILE_FILLER="${DRB_DATA:-.}/media-fixtitle-filler.shdata"
-declare -r FILE_PATTERNS="${DRB_DATA:-.}/media-fixtitle-patterns.shdata"
-declare -r FILE_DELETE="${DRB_DATA:-.}/media-fixtitle-delete.shdata"
-declare -r FILE_TAGS="${DRB_DATA:-.}/media-fixtags-tagfixes.shdata"
+declare -rg FILE_ABBR="${DRB_DATA:-.}/media-fixtitle-abbr.shdata"
+declare -rg FILE_FILLER="${DRB_DATA:-.}/media-fixtitle-filler.shdata"
+declare -rg FILE_PATTERNS="${DRB_DATA:-.}/media-fixtitle-patterns.shdata"
+declare -rg FILE_DELETE="${DRB_DATA:-.}/media-fixtitle-delete.shdata"
+declare -rg FILE_TAGS="${DRB_DATA:-.}/media-fixtags-tagfixes.shdata"
 
 # Common capitalized initialisms used in media filenames
 # Data files contain only one ewntry per line
 # Abbreviations should be capitalized exactly how you want to see them (e.g TX for Texas)
 ConfigFile_ABBR() {
   local -n _out="$1"
+  [[ -f "$FILE_ABBR" ]] || { LogError "Configuration file not found: $FILE_ABBR"; return 1; }
+  [[ -r "$FILE_ABBR" ]] || { LogError "Configuration file cannot be read: $FILE_ABBR"; return 2; }
   readarray -t _out < "$FILE_ABBR"
 }
 
@@ -114,6 +116,8 @@ ConfigFile_ABBR() {
 # If you prefer having every word capitalized, then don't include any filler words
 ConfigFile_FILLER() {
   local -n _out="$1"
+  [[ -f "$FILE_FILLER" ]] || { LogError "Configuration file not found: $FILE_FILLER"; return 1; }
+  [[ -r "$FILE_FILLER" ]] || { LogError "Configuration file cannot be read: $FILE_FILLER"; return 2; }
   readarray -t _out < "$FILE_FILLER"
 }
 
@@ -121,6 +125,8 @@ ConfigFile_FILLER() {
 # TRIMPATTERNS is not a read-only value because the user can supplement it via cli parameters.
 ConfigFile_PATTERNS() {
   local -n _out="$1"
+  [[ -f "$FILE_PATTERNS" ]] || { LogError "Configuration file not found: $FILE_PATTERNS"; return 1; }
+  [[ -r "$FILE_PATTERNS" ]] || { LogError "Configuration file cannot be read: $FILE_PATTERNS"; return 2; }
   readarray -t _out < "$FILE_PATTERNS" 
 }
 
@@ -128,6 +134,8 @@ ConfigFile_PATTERNS() {
 # Any filename that matches one of these patterns gets marked for deletion
 ConfigFile_DELETE() {
   local -n _out="$1"
+  [[ -f "$FILE_DELETE" ]] || { LogError "Configuration file not found: $FILE_DELETE"; return 1; }
+  [[ -r "$FILE_DELETE" ]] || { LogError "Configuration file cannot be read: $FILE_DELETE"; return 2; }
   readarray -t _out < "$FILE_DELETE"
 }
 
@@ -136,7 +144,7 @@ ConfigFile_TAGFIXES() {
   local -n _out="$1"
 
   # Load the tagfixes data file
-  if [ -r "$FILE_TAGS" ]; then
+  if [ -f "$FILE_TAGS" ]; then
     _out="$(cat "$FILE_TAGS")"
     LogVerbose "Tag Fixes: ${#_out[@]}"
   else
