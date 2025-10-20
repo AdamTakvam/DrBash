@@ -1,6 +1,8 @@
 #!/bin/bash
 
-source ${DRB_LIB:-/usr/local/lib}/general.sh
+set -o pipefail
+
+source ${DRB_LIB:-/usr/local/lib}/drbash.sh
 declare -r APPNAME="serial-console"
 
 PrintHelp() {
@@ -131,20 +133,24 @@ ParseParams() {
   [ -z "$1" ] && return 0
 
   for p in $@; do
-    if [[ "$p" =~ ^-t ]]; then
-      terminal="$(echo "$p" | sed -E 's/-t=(.*)/\1/')"
-    elif [[ "$p" =~ ^-i ]]; then
-      interface="$(echo "$p" | sed -E 's/-i=(.*)/\1/')"
-    elif [ "$(echo "$p" | grep "=")" ]; then 
-      LogError "Error: Invalid Parameter: $p"
-      exit 1
-    else
-      baudParam="$p"
-    fi
+    local pn=GetParamName "$p"
+    local pv=GetParamValue "$p"
+
+    case "$pn" in
+      t)
+        terminal="$pv" ;;
+      i)
+        interface="$pv" ;;
+      h)
+        PrintHelp
+        exit 0 ;;
+      *=*)
+        LogError "Unrecognized parameter: $p" ;;
+      *)
+        baudParam="$p" ;;
+    esac
   done
 }
-
-[[ "$1" =~ ^-h ]] && { PrintHelp; exit 0; }
 
 declare -g terminal="screen"
 declare -g interface="ttyS1"
