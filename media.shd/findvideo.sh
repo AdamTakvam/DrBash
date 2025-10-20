@@ -88,25 +88,28 @@ DisplayPromptHelp() {
   \tc TYPE VALUE\tAdd a permanent file normalization rule.
   \td #...\tDelete the file(s). Prompts for confirmation on each one.
   \t\tNote: Will attempt to use trashcan (script) then the trash (command) before resorting to /bin/rm.
+  \te\tEdit all dem sumbitches!
   \te #...\tEdit the name of one or more files.
   \tf PATTERN\tFilter the current results to only those also matching PATTERN.
   \t\t(It's the same behavior as if you had specified an additional term in the original query.)
   \tl\tCreate a Windows Media Player compatible playlist (.m3u8) from your search results.
   \t\tThe playlist title will be your search query and it will fail if you have no configured share mapping.
   \tl TITLE\tCreate a playlist from your search results named TITLE.
-  \t\tPlaylist creation will fail if you haven't already configured at least one drive nmapping.
+  \t\tPlaylist creation will fail if you haven't already configured at least one drive mapping.
   \tl TITLE PATH=DRIVE_LETTER|UNC|URL\tCreate a playlist from your search results named TITLE using the specified drive mapping.
   \tl ?\tGet more help using the playlist feature.
   \tn\tApply file normalization rules (set via action 'a') to all files in result set.
   \tn #...\tApply file normalization rules to the specified files.
   \t\tIf you want to apply the rules to a set of files in a staging area and merge them into your main repo,
   \t\t  exit this program and run: mediamerge
+  \to\tSame as 'p' but only show the files grouped by runtime
   \tp\tShow media properties for all search results ordered and color-grouped by runtime.
   \tp #...\tGet media properties. Specify one or more file indices (e.g. p 1 2 3). Results in the order you specified, no color.
   \tr\tRefresh/Redisplay the list of matches.
-  \ts PATTERN\tInitiate an entirely new search using PATTERN.
+  \ts PATTERN\tInitiate a new title search using PATTERN.
   \tu\tToggle between file and URL style output.
-  \tu [PATH=DRIVE_LETTER|UNC|URL]\tSet a path mapping (equates a path on the server with something you can access from a client)" 
+  \tu [PATH=DRIVE_LETTER|UNC|URL]\tSet a path mapping (equates a path on the server with something you can access from a client) 
+  \tw\tReset permissions for all files in search directory"
   Log
   LogHeader "Parameter Types:"
   LogTable "\tPATTERN\tHas the same meaning as given in the main command help page (or just above if you're already there).
@@ -175,59 +178,89 @@ FormatRegex() {
   fi
 }
 
-# Applies the values in the SEARCHTERMS array and returns the matching set of files in the CWD.
+# Applies the values in the SEARCHTERMS array and returns the matching set of files in the MEDIA_ROOT.
 # + $1 = Name of the variable used to hold the resulting array of filenames
-GetFileMatches() {
+SearchFiles() {
   local -n results="$1"
-  local -i init=0
 
-  for searchTerm in "${SEARCHTERMS[@]}"; do
-    if [[ -n "$searchTerm" ]]; then
-      LogVerbose "Applying search term: \"$searchTerm\""
-  
-      searchTerm="$(FormatRegex "$searchTerm")"
-  
-      if [ $init == 0 ]; then
-        if [ $searchSubs == 1 ]; then
-          Split results $'\n' "$(find "$MEDIA_ROOT" -type f -regextype egrep -iregex "$searchTerm" 2>/dev/null)"
-        else
-          Split results $'\n' "$(find "$MEDIA_ROOT" -maxdepth 1 -type f -regextype egrep -iregex "$searchTerm" 2>/dev/null)"
-        fi
-        # LogVerbose "The search found ${#results[@]} matches (unsorted)."
-        SortArray "results"
-        init=1
-        # LogVerbose "The search found ${#results[@]} matches (sorted)."
+  local searchTerm="${SEARCHTERMS[0]}"
+  if [[ -n "$searchTerm" ]]; then
+    LogVerbose "Searching for: \"$searchTerm\""
+
+    searchTerm="$(FormatRegex "$searchTerm")"
+
+    if (( oldSearch )); then
+      if (( $searchSubs )); then
+        IFS=$'\n' results="$(find "$MEDIA_ROOT" -type f -regextype egrep -iregex "$searchTerm" 2>/dev/null)"
       else
-        local -a results2=()
-  
-        for searchResult in "${results[@]}"; do
-          matchingResult="$(echo "$searchResult" | grep -Ei "$searchTerm")"
-          [ "$matchingResult" ] && results2+=("$matchingResult")
-        done
-  
-        results=()
-        if [ ${#results2[@]} == 0 ]; then
-          LogVerboseError "It looks like we filtered out all of the results!"
-          showMenu=0
-          return 1
-        else
-          for r in "${results2[@]}"; do
-            results+=("$r")
-          done
-        fi
-        LogVerbose "Performed incremental filter and am left with ${#results[@]} matches."
+        IFS=$'\n' results="$(find "$MEDIA_ROOT" -maxdepth 1 -type f -regextype egrep -iregex "$searchTerm" 2>/dev/null)"
+      fi
+    else
+      if (( $searchSubs )); then
+        IFS=$'\n' videos=($(find "${MEDIA_ROOT}" -type f | grep -Ei "^.*/[^/]*${searchTerm}[^/]*$"))
+      else
+        IFS=$'\n' videos=($(find "${MEDIA_ROOT}" -maxdepth 1 -type f | grep -Ei "^.*/[^/]*${searchTerm}[^/]*$"))
       fi
     fi
+
+    SortArray "results"
+  fi
+}
+
+FilterMatches() {
+  if [[ ${#SEARCHTERMS[@]} < 2 ]]; then
+    LogDebug "No filter criteria specified."
+    return
+  fi
+
+  local -n results="$1"
+  local -a results_temp=()
+  
+  local -a filterTerms=("${SEARCHTERMS[@]}")
+  unset 'filterTerms[0]'
+  
+  LogVerbose "Filtering results on: ${filterTerms[*]}"
+  
+  for searchResult in "${results[@]}"; do
+    base="${searchResult##*/}"
+    dir="${searchResult%/*}"
+    lc_base="${base,,}"
+  
+    matched=0
+    for term in "${filterTerms[@]}"; do
+      [[ -z $term ]] && continue
+      lc_term="${term,,}"
+      if [[ "$lc_base" == *"$lc_term"* ]]; then
+        matched=1
+        break
+      fi
+    done
+  
+    (( matched )) && results_temp+=("$dir/$base")
   done
+  
+  results=("${results_temp[@]}")
+
+  if [ ${#results[@]} == 0 ]; then
+    LogVerboseError "It looks like we filtered out all of the results!"
+    results=()
+    showMenu=0
+    return 1
+  else
+    Log "Performed incremental filter and am left with ${#results[@]} matches."
+  fi
 }
 
 DisplayResults() {
   displayResults=0
 
-  if [[ $refreshResults == 1 ]] || [[ ${#videos[@]} == 0 ]]; then
+  if [[ $refreshResults == 1 ]]; then
+    videos=()
     LogVerbose "Search Terms (DisplayResults) = $(SerializeArray -q -d=, -dS SEARCHTERMS)"
-    GetFileMatches 'videos'
-    LogDebug "GetFileMatches() returned ${#videos[@]} results."
+    SearchFiles 'videos'
+    LogDebug "SearchFiles() returned ${#videos[@]} results."
+    FilterMatches 'videos'
+    LogDebug "FilterMatches() returned ${#videos[@]} results."
   fi
 
   if ! IsEmptyArray SEARCHTERMS; then
@@ -259,6 +292,8 @@ DisplayResults() {
 }
 
 DoCommand() {
+  ResetIFS
+
   local -l action="$1"; shift 
   local -a result_indices=("$@")
   local -a filenames=()
@@ -268,29 +303,16 @@ DoCommand() {
   case "$action" in
     e | o | p | d)
       # Convenience mode
-      case "$action" in
-        o | p)
-          if [[ 0 == "${#result_indices[@]}" ]]; then
-            local -i q=$(( ${#videos[@]} - 1 ))
-            result_indices=($(seq 0 $q))
-            unset q
-          fi ;;
-      esac
+      if [[ 0 == "${#result_indices[@]}" ]]; then
+        local -i q=$(( ${#videos[@]} - 1 ))
+        result_indices=($(seq 0 $q))
+      fi
 
       # Get the filenames corresponding to the indices passed in
+      LogDebug "Number of items in videos[] = ${#videos[@]}"
       for i in ${result_indices[@]}; do
-        LogDebug "Number of items in videos[] = ${#videos[@]}"
-        fname="${videos[$i]}"
-        
-        if [ "$fname" ]; then
-          filenames+=("$fname")
-        else
-          LogError "Invalid match index: $i\n"
-          SetRefreshResultsFlag
-          return 1
-        fi
-      done
-      unset fname ;;
+        filenames+=("${videos[$i]}")
+      done ;;
   esac
 
   if LogDebugEnabled; then
@@ -302,18 +324,21 @@ DoCommand() {
     a)              # Archive
       local path="${1:-$DRB_MEDIA_REPO/${SEARCHTERMS[@]}}"
       Run $runParam mkdir -p "$path"
-#      Log "Archiving [          ]"; printf "%b" "\b\b\b\b\b\b\b\b\b\b\b"
+      # TODO: Implement a progress meter
+#      Log "Archiving [          ]"; 
       for v in "${videos[@]}"; do
-        Run $runParam cp "$v" "$path/"
+        Run $runParam cp -a "$v" "$path/"
       done
       Log "Search results have been archived to $path"
       unset v path ;;
     c)              # Configure
       Configure "$@" ;;
     d)              # Delete
-      if DoDeleteCommand "filenames"; then
-        SetRefreshResultsFlag
-      fi ;;
+      for filename in "${filenames[@]}"; do
+        if DeleteFile "$filename"; then
+          SetRefreshResultsFlag
+        fi 
+      done ;;
     e)              # Edit
       echo
       for filename in "${filenames[@]}"; do
@@ -333,9 +358,9 @@ DoCommand() {
       Normalize 'filenames'
       SetRefreshResultsFlag ;;
     o)              # Properties (suspected duplicates only)
-      GetFileProps 'filenames' 1 ;;
+      GetFileProps 'result_indices' 'filenames' 1 0 ;;
     p)              # Properties
-      GetFileProps 'filenames' 0 ;;
+      GetFileProps 'result_indices' 'filenames' 0 0 ;;
     r)              # Refresh results
       SetRefreshResultsFlag ;;
     s)              # New search
@@ -350,10 +375,14 @@ DoCommand() {
         [[ $displayURLs == 0 ]] && displayURLs=1 || displayURLs=0
         SetRefreshResultsFlag
       else
-        LogError "Cannot display URLs because (ConfigGet_MEDIA_MAP) is not set in $(MediaConfigFile)!"
+        LogError "Cannot display URLs because DRB_MEDIA_MAP is not set.
+        Set it with the command: c media DRB_MEDIA_MAP <serverpath>=<URL>"
       fi ;;      
+    w)
+      ResetFilePerms ;;
     x)
-      DoVariableAssignment "$@" && SetRefreshResultsFlag ;;
+      DoVariableAssignment "$@" 
+      [[ "$1" == 'DEBUG' ]] && { DoVariableAssignment 'VERBOSE' $2; } ;;
     "")
       DisplayPromptHelp ;;
     *)
@@ -382,7 +411,7 @@ ShowMenu() {
   LogDebug "$FNAME.indices() = $(SerializeArray -d=, -dS indices)"
 
   case "$action" in
-    a | c | d | e | f | l | n | o | p | r | s | u | x)
+    a | c | d | e | f | l | n | o | p | r | s | u | w | x)
       DoCommand "$action" "${indices[@]}" ;;
     q)
       LogVerbose "--- Quitting..."
@@ -404,7 +433,7 @@ StartNewSearch() {
 }
 
 AddSearchTerm() {
-  LogDebug "Search term = $1"
+  LogDebug "Adding search term = $1"
   if [[ ! "${SEARCHTERMS[@]}" =~ "$1" ]]; then
     SEARCHTERMS+=("$1")
   fi
@@ -418,7 +447,7 @@ AddSearchTerms() {
 }
 
 SetRefreshResultsFlag() {
-  LogDebug "Invalidating current result set"
+  LogDebug "Setting refresh results flag"
   refreshResults=1
   displayResults=1
 }
@@ -428,212 +457,236 @@ Configure() {
   Run drbashctl "$@"
 }
 
+# Command: w
+ResetFilePerms() {
+  if ! CanSudo; then
+    LogError "Resetting file permissions requires sudo access!"
+    return 1
+  fi
+
+  local -l user="$(ConfigGet_MEDIA_USER)"
+  local -l group="$(ConfigGet_MEDIA_GROUP)"
+  [[ -z "$user" ]] && { LogError "No media user configured."; return 2; }
+  [[ -z "$group" ]] && { LogError "No media group configured."; return 3; }
+
+
+  local file="$1"
+  if [[ -n "$file" ]]; then
+    # Make sure that this file really exists first
+    [[ -f $file ]] || { LogError "File $file does not exist!"; return 4; }
+    local dir="$(dirname "$file")"
+    # Directories
+    sudo -E chown $user:$group "$dir"
+    sudo -E chmod 777 "$dir"
+    # Files
+    sudo -E chown $user:$group "$file"
+    sudo -E chmod 664 "$file"
+  else
+    Log -n "Are you sure you want to set all directories and files within $MEDIA_ROOT to:
+    User: $user
+    Group: $group
+    Directories: rwxrwxrwx
+    Files: rw-rw-r--
+
+    Confirm [Y/n]? "
+    read -n1 choice; echo
+    [[ ${choice,,} == n ]] && return 9
+
+    # Directories
+    find "$MEDIA_ROOT/" -type d -exec sudo -E chown $user:$group "{}" +
+    find "$MEDIA_ROOT/" -type d -exec sudo -E chmod 777 "{}" +
+    # Files
+    find "$MEDIA_ROOT/" -type f -exec sudo -E chown $user:$group "{}" +
+    find "$MEDIA_ROOT/" -type f -exec sudo -E chmod 664 "{}" +
+  fi
+}
+
 # Normalize filename
-# TODO: Run media-fixtitle and media-fixtags only on the requested file.
-#   Modify those scripts to recognize a file being passed in as opposed to a directory.
-# Show the user the new filename.
-# Then rerun their query (which might not contain the normalized file anymore).
+# Run media-fixtitle and media-fixtags only on the requested files.
+# Then rerun their query (which might not contain the normalized files anymore).
 Normalize() {
   [[ -z "$1" ]] && return 99
-  CanRun process-media || { LogError "Dr. Bash is not installed correctly. Try uninstall/reinstall."; return 98; }
+  if ! CanRun media-fixtitle || ! CanRun media-fixtags; then
+    LogError "Dr. Bash is not installed correctly. Try uninstall/reinstall."
+    return 98
+  fi
 
   local -n _victims="$1"      # filenames(string) : array
-  process-media $(printf "%q " "${_victims[@]}")
+  media-fixtitle $(printf "%q " "${_victims[@]}")
 }
 
 # "Secret" admin command: x
 DoVariableAssignment()
 {
   local _varname="$1"
-  local _newvalue="$2"
-    
   if [[ -z "$_varname" ]]; then     # Print all variables
     declare -p
-  else
-    local -n _varvalue="$1"
-    if [[ -z "$_newvalue" ]]; then  # Print variable value
-      declare -p "$_varname"
-      # printf "%s=%s\n" "$1" "$_var"
-    elif [[ -z "$3" ]]; then        # Value assignment
+    return
+  fi
+
+  local -n _varvalue="$1"
+  local _newvalue="$2"
+    
+  if [[ -n "$_newvalue" ]]; then  # Print variable value
+    if [[ -z "$3" ]]; then        # Value assignment
       _varvalue="$_newvalue"
-      declare -p "$_varname"
-      return 0
     else                            # Array assignment
       shift
-      _var=("$@")
-      declare -p "$_varname"
-      return 0
+      _varvalue=("$@")
     fi
   fi
-  return 1  # Not really a failure, just don't need to refresh results
+  declare -p "$_varname"
 }
 
-# Commands: p & q
+# Commands: o & p
+# Displays the properties (size, duration, resolution) of the specified media files.
+# Files will be sorted in ascending order according to duration.
+# Files will be grouped if their durations are less than 2 seconds apart.
+# Files that have identical duration will be displayed in italics.
+# Files that have identical duration and size will be displayed in underline.
+#
+# The output format of this command is controlled by the DRB_MEDIA_COMPACT boolean environment variable
+# True:
+#     ##) <title> [<tags>].mp4
+#         <size> | <duration: X hr YY min ZZ s> | <resolution: WWWW x HHHH>
+# False:
+#     ##) <title> [<tags>].mp4
+#         Size:     <size: XXX MB>
+#         Duration: <duration: X hr YY min ZZ s>
+#         Height:   <height: HHHH pixels>
+#         Width:    <width: WWWW pixels>
+#
 # Args:
-#   $1 = name of indexed array of filenames
-#   $2 = int: 1 = print only sets; 0 = print all items
+#   $1 = name of indexed array of indices (either to entire result set or a subset)
+#   $2 = name of indexed array of filenames
+#   $3 = int: 1 = print only sets; 0 = print all items
+#   $4 = int: grouping duration tolerance [default: 2 sec]
+#
+# Notice: Be VERY careful when making any changes to this function.
+# It is extremely complex and algorithmically state-machine-based.
+# The function-within-a-function should be your first clue that you're not in Kansas anymore!
+#
+# Here's the part that's breaking your brain:
+# _props[] = duration~size~Base64(properties_display)
+# group_props[] = style~Base64(properties_display)
+# Why are the properties Base64-encoded? That'll be a good subject for your PhD dissertation!
 GetFileProps() {
-   [[ -z "$1" ]] && return 99
+  [[ -z "$1" ]] && return 99
 
-  local -n _filenames="$1"    # filename(string) : array       
-  local -i _dupesonly=${2:-0} # dupesonly(bool) : integer
-  local -a _props=()          # duration(integer)~properties(string) : array
-  local _report=""            # props_report : string
+  ResetIFS
+
+  local -n _indices="$1"              # int : array
+  local -n _filenames="$2"            # string : array       
+  local -i _dupesonly=${3:-0}         # bool : integer
+  local -i groupingTolerance=${4:-2}  # seconds : integer
+  local -a _props=()                  # duration(integer)~properties(string) : array
 
   # Validate parameters
-  case "$_dupesonly" in 0|1) ;; *) return 99 ;; esac
+  case "$_dupesonly" in 0|1) ;; *) _dupesonly=0 ;; esac
 
-  for (( i=0; i < ${#_filenames[@]}; i++ )); do
-    local file="${_filenames[$i]}"
-    local compact=0
-    ConfigGet_MEDIA_COMPACT && compact=1
-
-    LogDebug "Calling: mediainfo $file"
-    local _info="$(mediainfo "$file")"
-    if [[ "$?" == 0 ]] && [[ -n "$_info" ]]; then
-      local vInfo="$(DisplayMediaProperties "$_info" $compact $i)\n"
-      LogDebug "vInfo(1) = $vInfo"
-
-      # Extract duration from vInfo as a scalar value
-      local duration="$(echo "$_info" | grep "Duration" | head -n1 | cut -d: -f2)"
-      duration="$(printf "%s" "$duration" | awk '{ if ($2 == "h") $1=($1*3600)+($3*60); else $1=$1*60+$3; print $1 }')"
-      LogDebug "duration(1) = $duration"
-
-      # Add a composite value of [duration]~[vInfo] to the _props array
-      b64_vInfo=$(printf '%s' "$vInfo" | b64_enc)
-      _props+=("$(printf "%s~%s" "$duration" "$b64_vInfo")")
-    else
-      LogError "Failed to get media info for: $file"
+  {
+    if [[ $_dupesonly == 1 ]]; then
+      [[ ${#_filenames[@]} == 1 ]] && { LogError "Cannot show pairs of results with only one result!"; return 0; }
+      [[ ${#_filenames[@]} == 0 ]] && { LogError "Cannot show pairs of results when you have no results!"; return 0; }
     fi
-  done
-  unset i compact file _info vInfo duration
 
-  LogDebug "$(declare -p _props)"
+    (( ${#filenames[@]} > 50 )) && Log "Please wait..."
 
-  # Build an indexable list of available color names from COLOR[]
-  local -a colors=()
-  local cname
-  for cname in "${!COLOR[@]}"; do colors+=("$cname"); done
+    for (( i=0; i < ${#_filenames[@]}; i++ )); do
+      local file="${_filenames[$i]}"
+      local compact=0
+      ConfigGet_MEDIA_COMPACT && compact=1
+  
+      LogDebug "Calling: mediainfo $file"
+      local _info="$(mediainfo "$file")"
 
-  local colorIndex=0
-  local -a group_recs=()
-  local prev_duration=''
-  local line duration vInfo
-
-  # Flush current group according to _dupesonly
-  flush_group() {
-    local size=${#group_recs[@]}
-    if (( _dupesonly == 1 && size < 2 )); then
-      group_recs=()   # discard singletons when sets-only
-      ((colorIndex++))
-      return
-    else
-      local setColor=${colors[$(( colorIndex % ${#colors[@]} ))]}
-      local rec b64_vInfo vInfo
-      for rec in "${group_recs[@]}"; do
-        b64_vInfo=${rec#*~}
-        vInfo="$(printf '%s' "$b64_vInfo" | b64_dec)"
-        LogColor "$setColor" "$vInfo"
-      done
-      ((colorIndex++))
-      group_recs=()
-    fi
+      if [[ "$?" == 0 ]] && [[ -n "$_info" ]]; then
+  
+        # Extract duration from vInfo as a scalar value
+        local size="$(echo "$_info" | grep 'File size' | cut -d: -f2 | Trim --)"
+        local duration="$(echo "$_info" | grep "Duration" | head -n1 | cut -d: -f2)"
+        duration="$(printf "%s" "$duration" | awk '{ if ($2 == "h") $1=($1*3600)+($3*60); else $1=$1*60+$3; print $1 }')"
+        LogDebug "size = $size"
+        LogDebug "duration = $duration"
+  
+        local vInfo="$(DisplayMediaProperties "$_info" $compact ${_indices[$i]})\n"
+        LogDebug "vInfo = $vInfo"
+        
+        # Add a composite value of [duration]~[size]~[vInfo] to the _props array
+        local b64_vInfo=$(printf '%s' "$vInfo" | b64_enc)
+        _props+=("$(printf "%d~%s~%s" "$duration" "$size" "$b64_vInfo")")   # _props=duration~size~base64(vInfo)
+      else
+        LogError "Failed to get media info for: $file"
+      fi
+    done
   }
 
-  local -i idx=0
-  while IFS= read -r -d '' rec; do
-    duration=${rec%%~*}   # before first '~'
-    LogDebug "duration(2) = $duration"
+  LogDebugEnabled && LogDebug "$(declare -p _props)"
 
-    if [[ -n $prev_duration ]] && (( duration - prev_duration > 2 )); then
+  local colorIndex=0
+  local -a group_props=()
+
+  # A group can be any set of one or more results
+  # Show them all unless the _dupesonly flag was passed in
+  flush_group() {
+    local size=${#group_props[@]}
+    
+    if (( _dupesonly == 0 || size > 1 )); then
+      local IFS=
+      local -i color=$(( (colorIndex++ % 7) + 31 ))
+      local -i style 
+      local prop b64_vInfo vInfo line
+      local -a propArray=()
+
+      # local -i iteration=0
+      for prop in "${group_props[@]}"; do
+        Split 'propArray' '~' "$prop"
+        style="${propArray[0]}"
+        b64_vInfo="${propArray[1]}"
+        vInfo="$(printf '%s' "$b64_vInfo" | b64_dec)"
+        LogColorCSB -n $color $style 0 "$vInfo"
+        # Only apply the font style to the file name
+        #styleLine=1;
+        #while IFS= read -r -d '' line; do
+        #  (( styleline )) \
+        #    && LogColorCSB $color $style '' "$line" \
+        #    || LogColorCSB $color '' '' "$line"
+        #  styleLine=0
+        #done < <(printf '%s' "$vInfo")
+      done
+      Log
+    fi
+    group_props=()
+  }
+
+  local prev_duration=0 prev_size=0 
+  local duration b64_vInfo prop size
+  local -i style=0
+  local -a propArray
+
+  # Go through the properties and figure out what style they should be rendered in
+  #   then store that information into a group collection.
+  while IFS= read -r -d '' prop; do
+    Split 'propArray' '~' "$prop"
+
+    duration="${propArray[0]}"
+    size="${propArray[1]}"
+    b64_vInfo="${propArray[2]}"
+
+    style=0
+    if (( duration - prev_duration > $groupingTolerance )); then
       flush_group
+    elif (( duration == prev_duration )); then
+      style=4                               # italics
+      [[ size == prev_size ]] && style=5    # underline
     fi
 
-    group_recs+=($rec)
-    prev_duration=$duration
+    group_props+=("$(printf "%d~%s" "$style" "$b64_vInfo")") 
+    prev_duration="$duration"
+    prev_size="$size"
   done < <(printf '%s\0' "${_props[@]}" | sort -z -t'~' -k1,1n)
 
   flush_group
-}
-
-
-# Command: P
-GetFileProps_old() {
-  [[ -z "$1" ]] && return 99
-
-  local -n _filenames="$1"    # filename(string) : array       
-  local -i _dupesonly=${2:-0} # dupesonly(bool) : integer
-  local -a _props=()          # duration(integer)~properties(string) : array
-  local _report=""            # props_report : string
-
-  for (( i=0; i < ${#_filenames[@]}; i++ )); do
-    local file="${_filenames[$i]}"
-    local compact=0
-    ConfigGet_MEDIA_COMPACT && compact=1
-
-    LogDebug "Calling: mediainfo $file"
-    local _info="$(mediainfo "$file")"
-    if [[ "$?" == 0 ]] && [[ -n "$_info" ]]; then
-      local vInfo="$(DisplayMediaProperties "$_info" $compact $index)"
-      
-      # Extract duration from vInfo as a scalar value
-      local duration="$(echo "$_info" | grep "Duration" | head -n1 | cut -d: -f2)"
-      duration="$(printf "%s" "$duration" | awk '{ if ($2 == "h") $1=($1*3600)+($3*60); else $1=$1*60+$3; print $1 }')"
-      # Add a composite value of [duration]~[index] to the _durations array
-      _props+=("$(printf "%s~%s" "$duration" "$vInfo")")
-    else
-      LogError "Failed to get media info for: $file"
-    fi
-  done
-  unset i compact file _info vInfo duration
-
-  LogDebug "$(declare -p _props)"
-
-  if [[ ${#_filenames[@]} == ${#videos[@]} ]]; then
-    # When all results are selected, sort by runtime and paginate
-    LogVerbose "Displaying properties of all results sorted by duration:"
-
-    LogDebug "(Pre-Sort) $(declare -p _durations)"
-    SortIntArray _durations
-    LogDebug "(Post-Sort) $(declare -p _durations)"
-
-    local -a colors=()
-    for c in "${!COLOR[@]}"; do
-      colors+=("$c")
-    done
-
-    local -i colorIndex=1 prevDuration=0
-    local -a displayNames=()
-
-    for d_i in "${_durations[@]}"; do
-      local -i d=$(echo "$d_i" | cut -d- -f1)
-      local -i i=$(echo "$d_i" | cut -d- -f2)
-      LogDebug "d=$d | i=$i"
-
-      local -i delta=$(( d - prevDuration ))
-      if (( $delta > 2 )); then
-        colorIndex=$(( colorIndex + 1 % ${#colors[@]} ))
-        displayNames[-1]="${_props[$i]}"
-      else
-        [[ "${displayNames[-1]}" != "${_props[$i-1]}" ]] && displayNames+="${_props[$i-1]}"
-        displayNames+="${_props[$1]}"
-      fi
-
-      LogDebug "ColorIndex=$colorIndex | Color=${colors[$colorIndex]}"
-      prevDuration=d
-    done 
-
-    for n in displayNames; do
-      LogDebug "Calling LogColor ${colors[$colorIndex]} \"$n\""
-      LogColor ${colors[$colorIndex]} "$n"
-    done| more
-    LogColor NC       # Fix for color carryover bug in more
-  else
-    LogVerbose "Displaying properties of the specified results only."
-    for p in "${_props[@]}"; do
-      printf "%b\n\n" "$p"
-    done | more
-  fi
 }
 
 # Command: u
@@ -655,40 +708,67 @@ GetURL() {
 }
 
 # Command: d
-DoDeleteCommand() {
-  local -n _filenames="$1"
+DeleteFile() {
+  local file="$1"
+  local -i prompt=${2:-1}
   local -i retVal=1
 
-  for file in "${_filenames[@]}"; do
+  # Check that file exists and we have sufficient permission to delete it
+  if [[ ! -f "$file" ]]; then
+    LogError "$file does not exist!"
+    return 1
+  elif [[ $runParam == -u ]] && [[ ! -w "$(dirname "$file")" ]]; then
+    LogError "Unsufficient permissions to delete $file"
+    return 2
+  fi
+
+  if [[ $prompt == 1 ]]; then
     Log -n "Are you sure that you want to delete \"$(FormatFilename "$file")\" (this action might be irreversible) (Y/n)? "
     read -n1 choice
-    if [ "${choice,,}" != 'n' ]; then 
-      retVal=0
-      local trash=0
-      if [ "$(type -P trashcan)" ]; then
-        trash=1
-        Run $runParam trashcan "$file"
-      elif [ "$(type -P trash)" ]; then
-        trash=1
-        Run $runParam trash "$file"
-      fi
-    
-      # If it's still there, bypass trash and just get it gone! 
-      if [ -f "$file" ]; then
-        [ "$trash" == 1 ] && LogError "$(ColorText YELLOW "Moving $(FormatFilename "$file") to trash failed. Attempting permanent deletion...")"
-        Run $runParam /bin/rm "$file"
-      fi
-    
-      if [ -f "$file" ]; then
-        LogError "$(ColorText YELLOW "All attempts to delete $(FormatFilename "$file") have failed!")"
-      else
-        Log "$(ColorText LGREEN "$(FormatFilename "$file") deleted\n")"
-      fi
-      unset trash
-    fi
-  done
+  else
+    choice='y'
+  fi
 
-  return $retVal # 0 if deletes happened, 1 if all deletes were declined
+  [[ "${choice,,}" == 'n' ]] && return 2
+
+  TryDeleteFile() {
+    local cmd="$1"
+    local file="$2"
+
+    [[ -z "$cmd" || -z "$file" ]] && return 1
+
+    if ! Run -u "$cmd" "$file" 2>/dev/null; then
+      Run -r "$cmd" "$file" 2>/dev/null
+    fi
+
+    [[ -f "$file" ]] && return 1 || return 0
+  }
+
+  CanSudo && ResetFilePerms "$file"
+  local trash=0
+  if CanRun trashcan; then
+    trash=1
+    TryDeleteFile trashcan "$file"
+  elif CanRun trash; then
+    trash=1
+    TryDeleteFile trash "$file"
+  fi
+
+  # If it's still there, bypass trash and just get it gone! 
+  if [ -f "$file" ]; then
+    [ "$trash" == 1 ] \
+      && LogColor LYELLOW "Moving $(FormatFilename "$file") to trash failed. Attempting permanent deletion..." \
+      || Log "No trash configured. Deleting $(FormatFilename "$file") permanently..."
+    TryDeleteFile /bin/rm "$file"
+  fi
+
+  if [ -f "$file" ]; then
+    LogColor RED "All attempts to delete $(FormatFilename "$file") have failed!"
+    return 1
+  else
+    LogColor LGREEN "$(FormatFilename "$file") deleted"
+    return 0
+  fi
 }
 
 # Command: l
