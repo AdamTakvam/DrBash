@@ -67,8 +67,8 @@ EditArray() {
 #               -d=<string> Add <string> between each element
 #               -d^         Include delimiter before first element
 #               -d$         Include delimiter after last element
-#               -ds         Add a space before <char> delimiter
-#               -dS         Add a space after <char> delimiter
+#               -ds         Add a space before delimiter
+#               -dS         Add a space after delimiter
 #               -de         Add a newline after each element
 #               -s          Sort the elements in the array
 # + $3 ... = The name of the array as defined in the caller's scope. 
