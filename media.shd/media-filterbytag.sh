@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${DRB_LIB:-/usr/local/lib}/general.sh"
+source "$DRB_LIB/drbash.sh"
 
 declare -r APPNAME="filterbytag"
 
@@ -18,24 +18,32 @@ PrintHelp() {
   echo
 }
 
-declare -l tag="$1"
+declare -l tag
+declare -i getinfo=0 recurse=0
 
-if [ -z "$1" ] || [ "$1" == "-h" ] || [ "$1" == "?" ]; then
-  PrintHelp
-  exit 0
-elif [ "$1" == "-i" ]; then
-  getinfo=1
-  tag="$2"
-elif [ "$1" == "-r" ]; then
-  rparam="1"
-  tag="$2"
-fi
+for p in "$@"; do
+  case "$p" in
+    "" | -h | ? | --help | WTF)
+      PrintHelp
+      exit 0 ;;
+    -i)
+      getinfo=1
+      tag="$2" ;;
+    -r)
+      recurse="1"
+      tag="$2" ;;
+    *)
+      tag="$p" ;;
+  esac
+done
+
+media_repo="$(ConfigGet_MEDIA_REPO)"
 
 declare -a videos
-if [ "$rparam" ]; then
-  IFS=$'\n'; videos=($(find . -name "*${tag,,}*" -type f))
+if (( $recurse )); then
+  IFS=$'\n' videos=($(find "${media_repo:-.}/" -type f | grep -E "\[.*[. ]${tag,,}[. ].*\]"))
 else
-  IFS=$'\n'; videos=($(find . -maxdepth 1 -name "*${tag,,}*" -type f))
+  IFS=$'\n' videos=($(find "${media_repo:-.}/" -maxdepth 1 -type f | grep -E "\[.*[. ]${tag,,}[. ].*\]"))
 fi
 
 LogError "Found ${#videos[@]} matches!"
