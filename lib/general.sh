@@ -3,7 +3,7 @@
 # 
 
 # Protect against being sourced multiple times
-[ "$__general" ] && return 0
+[[ ${__general-} == 1 ]] && return 0
 declare -g __general=1
 
 # Determines whether the current user has sudo privileges
@@ -33,8 +33,15 @@ IsRoot() {
 }
 export -f IsRoot
 
+# Checks whether the output of the current script is redirected to some other destination than the display.
+# Returns the same exact result as IsPiped, so there's no need to vall both.
+# - retval : 0 if redirected, 1 otherwise
+IsRedirected() {
+  IsPiped
+  return $?
+}
+
 # Checks whether the current script instance is running within the context of a piped output chain. 
-# - stdout : Non-null if session is piped
 # - retval : 0 if piped, 1 otherwise
 IsPiped() {
   # This is a special test to see if stdout is connected to a terminal or being piped into another command.
