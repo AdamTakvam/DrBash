@@ -75,16 +75,17 @@ EditArray() {
 #             That's right; just the variable name, not the array itself. We got it. Don't worry!
 # - stdout = The serialized version of your array
 SerializeArray() {
+  local NUM_FLAG_CHARS=2  # Tell the parameter parsing logic how to interpret our flags
   local -i quotes=0 crlf=0 sortArray=0 delim_pre=0 delim_post=0
   local delim='' p e            
 
-  local -a params=("$@")         # This is so stupid.  
-  local -n array="${params[-1]}" # The people who wrote bash are the worst coders in the world
-  unset params[-1]
+  local -a params=("$@")         
+  local -n array="${params[-1]}" 
 
   (( ${#array[@]} )) || return 1
 
-  for p in "${params[@]}"; do
+  for (( i=0; i < ${#params[@]}-1; i++ )); do
+    local p="${params[$i]}"
     local pn="$(GetParamName "$p")"  
     local pv="$(GetParamValue "$p")"
 
