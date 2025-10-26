@@ -84,8 +84,6 @@ DisplayPromptHelp() {
   LogTable "\ta [PATH]\tCreate an archive of the result set at location PATH.
   \t\tPATH must be an absolute POSIX path on the server. If no directory exists at that location, one will be created.
   \t\tIf not specified, defaults to \$DRB_MEDIA_REPO\<search terms>
-  \tc TYPE\tOpen the configuration file corresponding to TYPE in your default text editor.
-  \tc TYPE VALUE\tAdd a permanent file normalization rule.
   \td #...\tDelete the file(s). Prompts for confirmation on each one.
   \t\tNote: Will attempt to use trashcan (script) then the trash (command) before resorting to /bin/rm.
   \te\tEdit all dem sumbitches!
@@ -120,11 +118,9 @@ DisplayPromptHelp() {
   \tURL\tThe http(s):// style path to the media. 
   \tVALUE\tA literal value.
   \tEXPR\tAn extended regular expression (formatted for sed -E).
-  \tTYPE\tThe name of a filename normalization rule set. 
+  \tMODULE\tThe name of a filename normalization rule set. 
   \t\tIf no parameters are supplied, the specified ruleset is opened in the default text editor.
   \t\tIf a parameter is given, a corresponding rule is added (permanently)." 
-  Log
-  HelpNormalizationTypes
   Log
   LogHeader "Examples:" 
   Log "\t1. To get the properties of the fourth search result: $(ColorText LGREEN 'p 4')"
@@ -137,10 +133,6 @@ DisplayPromptHelp() {
   Log "\t8. To add a file deletion rule: $(ColorText LGREEN 'c file-delete "Tom Green"')" 
   Log "\t9. To edit global configuration: $(ColorText LGREEN 'c config')" 
   Log
-}
-
-HelpNormalizationTypes() {
-  Run $DRB_BIN/drbashctl -h
 }
 
 # Meet: The Globals...
@@ -219,19 +211,18 @@ FilterMatches() {
   local -a filterTerms=("${SEARCHTERMS[@]}")
   unset 'filterTerms[0]'
   
-  LogVerbose "Filtering results on: ${filterTerms[*]}"
+  LogVerbose "Filtering results on: $(SerializeArray -ds -dS -d='AND' -q 'filterTerms')"
   
   for searchResult in "${results[@]}"; do
-    base="${searchResult##*/}"
-    dir="${searchResult%/*}"
-    lc_base="${base,,}"
-  
-    matched=0
+    local base="${searchResult##*/}"
+    local dir="${searchResult%/*}"
+    local lc_base="${base,,}"
+    local lc_term=''
+    local matched=1
+
     for term in "${filterTerms[@]}"; do
-      [[ -z $term ]] && continue
-      lc_term="${term,,}"
-      if [[ "$lc_base" == *"$lc_term"* ]]; then
-        matched=1
+      if [[ -n "$term" && "$lc_base" != *"${term,,}"* ]]; then
+        matched=0
         break
       fi
     done
@@ -241,22 +232,23 @@ FilterMatches() {
   
   results=("${results_temp[@]}")
 
-  if [ ${#results[@]} == 0 ]; then
-    LogVerboseError "It looks like we filtered out all of the results!"
-    results=()
+  if IsEmptyArray results; then
+    Log "It looks like we filtered out all of the results!"
     showMenu=0
     return 1
   else
     Log "Performed incremental filter and am left with ${#results[@]} matches."
+    return 0
   fi
 }
 
 DisplayResults() {
   displayResults=0
+  showMenu=1
 
   if [[ $refreshResults == 1 ]]; then
     videos=()
-    LogVerbose "Search Terms (DisplayResults) = $(SerializeArray -q -d=, -dS SEARCHTERMS)"
+    LogVerbose "Search Terms = $(SerializeArray -q -d='AND' -ds -dS SEARCHTERMS)"
     SearchFiles 'videos'
     LogDebug "SearchFiles() returned ${#videos[@]} results."
     FilterMatches 'videos'
@@ -265,7 +257,7 @@ DisplayResults() {
 
   if ! IsEmptyArray SEARCHTERMS; then
     if [[ ${#videos[@]} == 0 ]]; then
-      LogError "No matches found for case-insensitive search term(s): $(SerializeArray -q -d=, -dS SEARCHTERMS)"
+      LogError "No matches found for case-insensitive search term(s): $(SerializeArray -q -d='AND' -ds -dS SEARCHTERMS)"
       if [ "$menuMode" == 0 ]; then
         showMenu=0
         return 1
@@ -297,6 +289,7 @@ DoCommand() {
   local -l action="$1"; shift 
   local -a result_indices=("$@")
   local -a filenames=()
+  local filename=''
 
   [ -z "$action" ] && return
 
@@ -331,8 +324,6 @@ DoCommand() {
       done
       Log "Search results have been archived to $path"
       unset v path ;;
-    c)              # Configure
-      Configure "$@" ;;
     d)              # Delete
       for filename in "${filenames[@]}"; do
         if DeleteFile "$filename"; then
@@ -352,7 +343,7 @@ DoCommand() {
         AddSearchTerms "$@" 
       fi ;;
     l)              # Create playlist      
-      LogDebug "$FNAME: \$1 = $1 | \$2 = $2"
+      LogDebug "\$1 = $1 | \$2 = $2"
       DoPlaylistCommand "$@" ;;
     n)
       Normalize 'filenames'
@@ -362,7 +353,7 @@ DoCommand() {
     p)              # Properties
       GetFileProps 'result_indices' 'filenames' 0 0 ;;
     r)              # Refresh results
-      SetRefreshResultsFlag ;;
+      SetRedisplayResultsFlag ;;
     s)              # New search
       if [ -z "$1" ]; then
         LogError "No search parameter supplied"
@@ -373,10 +364,10 @@ DoCommand() {
     u)              # Get URLs
       if [[ "$(ConfigGet_MEDIA_MAP)" ]]; then
         [[ $displayURLs == 0 ]] && displayURLs=1 || displayURLs=0
-        SetRefreshResultsFlag
+        SetRedisplayResultsFlag
       else
         LogError "Cannot display URLs because DRB_MEDIA_MAP is not set.
-        Set it with the command: c media DRB_MEDIA_MAP <serverpath>=<URL>"
+        Set it with the command: drbashctl media DRB_MEDIA_MAP <serverpath>=<URL>"
       fi ;;      
     w)
       ResetFilePerms ;;
@@ -392,7 +383,6 @@ DoCommand() {
 }
 
 ShowMenu() {
-  declare FNAME="ShowMenu()"
   menuMode=1
 
   local cmd
@@ -402,26 +392,26 @@ ShowMenu() {
   ResetIFS  
 
   local -l action=${cmd::1} 
-  LogDebug "$FNAME.action = ${action:-<not set>}"
+  LogDebug "action = ${action:-<not set>}"
 
   local -a indices
-  eval indices=(${cmd:2})       # Don't fuck with this again!
+  eval indices=(${cmd:2})       # Don't fuck with this!
 
-  LogDebug "$FNAME.#indices = ${#indices[@]}"
-  LogDebug "$FNAME.indices() = $(SerializeArray -d=, -dS indices)"
+  LogDebug "#indices = ${#indices[@]}"
+  LogDebug "indices[] = $(SerializeArray -d=, -dS indices)"
 
   case "$action" in
-    a | c | d | e | f | l | n | o | p | r | s | u | w | x)
+    a | d | e | f | l | n | o | p | r | s | u | w | x)
       DoCommand "$action" "${indices[@]}" ;;
     q)
-      LogVerbose "--- Quitting..."
+      LogVerbose "--- Quitting ---"
       quit=1 ;;
     "")
-      ;;
+      ;;        # Just show the prompt again
     h | help)
       DisplayPromptHelp ;;
     *)
-      LogError "$(ColorText RED "Error: Invalid action: $action")"
+      LogError "Invalid action: $action"
       DisplayPromptHelp ;;
   esac
 }
@@ -449,15 +439,13 @@ AddSearchTerms() {
 SetRefreshResultsFlag() {
   LogDebug "Setting refresh results flag"
   refreshResults=1
+  SetRedisplayResultsFlag
+}
+
+SetRedisplayResultsFlag() {
   displayResults=1
 }
 
-# Command: c
-Configure() {
-  Run drbashctl "$@"
-}
-
-# Command: w
 ResetFilePerms() {
   if ! CanSudo; then
     LogError "Resetting file permissions requires sudo access!"
@@ -507,12 +495,13 @@ ResetFilePerms() {
 Normalize() {
   [[ -z "$1" ]] && return 99
   if ! CanRun media-fixtitle || ! CanRun media-fixtags; then
-    LogError "Dr. Bash is not installed correctly. Try uninstall/reinstall."
+    LogError "Dr. Bash is not installed correctly. Try uninstalling and reinstalling."
     return 98
   fi
 
   local -n _victims="$1"      # filenames(string) : array
-  media-fixtitle $(printf "%q " "${_victims[@]}")
+  
+  GetVirtualOutput media-fixtitle $(printf "%q " "${_victims[@]}")
 }
 
 # "Secret" admin command: x
