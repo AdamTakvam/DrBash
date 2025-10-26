@@ -1,21 +1,67 @@
 [[ -n $__cli ]] && return 0
 declare -g __cli=1
 
+declare -g NUM_FLAG_CHARS=1
+
+# Determines whether the given parameter is a valid short or long-form flag
+IsFlagParam() { 
+  [[ "$1" =~ ^-[A-Za-z0-9_]{1,$NUM_FLAG_CHARS}$ ]] || \
+  [[ "$1" =~ ^--[A-Za-z0-9_]+$ ]]
+}           
+  
+# Determines whether the given parameter is a valid short or long-form named parameter
+IsNamedParam() { 
+  [[ "$1" =~ ^-[A-Za-z0-9_]{1,$NUM_FLAG_CHARS}=.*$ ]] || \
+  [[ "$1" =~ ^--[A-Za-z0-9_]+=.*$ ]]
+} 
+
+# Determines whether the given parameter is stand alone
+IsStandAloneParam() {
+  [[ "$1" != -* ]]
+}
+
+# Determines whether the given parameter is the piped data flag
+IsPipedDataParam() {
+  [[ "$1" == -- ]]
+}
+
+# Returns the name portion of a flag or named parameter. e.g.:
+# -h     -> h    (0)
+# -i=3   -> i    (0)
+# --help -> help (0)
+# --ab=z -> ab   (0)
+# *      -> ''   (1)
+# a.txt  -> ''   (1)
+# a=b    -> ''   (1)
+# + $1 = The command-line parameter
+# - stdout = The parameter name
+# - retVal = 0: Parameter is a flag or named parameter | 1 : Parameter is empty or standalone
 GetParamName() {
-  if [[ "$1" =~ ^- ]] && [[ "$1" != -- ]]; then
-    _arg="${1#*-}"
+  if IsFlagParam "$1" || IsNamedParam "$1"; then
+    _arg="${1##*-}"
     printf "%s" "${_arg%%=*}"  
+    return 0
   else
-    printf "%s" "$1"
+    return 1
   fi
  }
 
+# Returns the value portion of a named parameter. e.g.:
+# -h     -> '' (1)
+# -i=3   -> 3  (0)
+# --help -> '' (1)
+# --ab=z -> z  (0)
+# *      -> '' (1)
+# a.txt  -> '' (1)
+# a=b    -> '' (1)
+# + $1 = The command-line parameter
+# - stdout = The parameter name
+# - retVal = 0: Parameter is a named parameter | 1 : Parameter is anything else
 GetParamValue() {
-  if [[ "$1" =~ = ]]; then
-    printf "%s" "${1#*=}"
+  if IsNamedParam "$1"; then
+    printf "%s" "${1##*=}"
     return 0
   else
-    printf ""
     return 1
   fi
 }
@@ -49,11 +95,15 @@ CombineParams() {
 #         All others are returned in the same condition they were received.
 # - stdout = list of null-delimited parameters
 SeparateParameters() {
-  local -n _outParams="$1"; shift     # array
+  [[ $NUM_FLAG_CHARS == 1 ]] || return 0  # Don't separate params if caller allows multi-char flags
+
+  local -n _outParams="$1"; shift         # array
   local -i _result=1
 
   for param in "$@"; do
+    echo "SeparateParameters: param(1) = $param"
     local tok=$(Trim $param)
+    echo "SeparateParameters: param(2) = $param"
     case "$tok" in
       --*)
         _outParams+=("$tok") ;;
@@ -63,10 +113,11 @@ SeparateParameters() {
         local -a _chars=()
         GetChars '_chars' "$tok"
         for c in "${_chars[@]}"; do
-          if [[ $c =~ [^-\ ] ]]; then    # Don't ask questions you don't want the answer to
-            _outParams+=("-$c")
-            _result=0
-          fi
+          case $c in ' ' | -) ;;
+            *)
+              _outParams+=("-$c")
+              _result=0 ;;
+          esac
         done ;;
       *)
         _outParams+=("$tok") ;;
@@ -119,57 +170,43 @@ ParseParameters() {
   shift; shift; shift; # No, it isn't equivalent to 'shift 3', thankyouverymuch
 
   # -------- helpers --------
-  _is_valid_name() { 
-    [[ $1 =~ ^[A-Za-z0-9_]+$ ]]; # underscores OK; hyphens NOT OK
-  }           
   
   _parse_tokens() {
+    local -n tokens="$1"
     local tok
 
-    for tok in "$@"; do
+    for tok in "${tokens[@]}"; do
       # "--" is NOT allowed mid-stream
-      if [[ $tok == -- ]]; then
+      if IsPipedDataParam "$tok"; then
         LogError "-- can only appear as the last element in the parameter list."
         return 1
-      fi
-
-      local pn="$(GetParamName "$tok")"
-      local pv="$(GetParamValue "$tok")"
-
-      if [[ -n "$pn" ]]; then
-        if ! _is_valid_name "$pn"; then
-          LogError "Invalid parameter syntax: $tok"
-          return 1
-        fi
-
-        if [[ -n "$pv" ]]; then
-#          _NAMED["$pn"]="$(printf '%q' "$pv")"
-          _NAMED["$pn"]="$pv"
-        else
-          # bare flag -> goes to flags as its name (without leading --)
-          _FLAGS+=("$pn")
-          continue
-        fi
-      else
-        # Anonymous/standalone
-#        _ANON+=( "$(printf '%q' "$tok")" )
+      elif IsFlagParam "$tok"; then
+        local pn="$(GetParamName "$tok")"
+        _FLAGS+=("$pn")
+      elif IsNamedParam "$tok"; then
+        local pn="$(GetParamName "$tok")"
+        local pv="$(GetParamValue "$tok")"
+        _NAMED[$pn]="$pv"
+      elif IsStandAloneParam "$tok"; then
         _ANON+=("$tok")
+      else
+        LogError "Invalid parameter syntax: $tok"
+        return 1
       fi
     done
-
-    return 0
   }
 
   local -a _TOKENS=()
   SeparateParameters _TOKENS "$@"
 
   # Build argv to parse from either a named array ($5) or stdin when $5 == "--"
-  if [[ $_TOKENS[-1] == -- ]]; then
+  if IsPipedDataParam "${_TOKENS[-1]}"; then
     unset '_TOKENS[-1]'
     # Read stdin as a single line respecting shell-like word splitting
     # Use read -r -a to split like the shell (handles quoted values inside the line)
     local _line=''
-    IFS= read -r _line
+    local IFS= 
+    read -r _line
     # If multiple lines, slurp the rest appended with spaces
     if [[ ! -t 0 ]]; then
       local _extra
@@ -182,7 +219,7 @@ ParseParameters() {
   fi
 
   # Parse
-  _parse_tokens "${_TOKENS[@]}"
+  _parse_tokens _TOKENS
   return $?
 }
 

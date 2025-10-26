@@ -17,10 +17,12 @@ SetSubtestName 'GetParamName -r' 'c'
 AssertEqual 'r' "$(GetParamName -r=1)"
 
 SetSubtestName 'GetParamName -rf' 'd'
+NUM_FLAG_CHARS=2 
 AssertEqual 'rf' "$(GetParamName -rf)"
+NUM_FLAG_CHARS=1
 
 SetSubtestName 'GetParamName anonParam' 'e'
-AssertEqual 'anonParam' "$(GetParamName anonParam)"
+AssertEqual '' "$(GetParamName anonParam)"
 
 # GetParamValue
 
@@ -71,14 +73,13 @@ AssertEqual '--help' "${params[4]}"
 # value1 value2     ${3[0]}="value1" ${3[1]}="value2"
 # "value1 value2"   ${3[0]}="value1 value2"
 
-declare -a flags anonParams bad
-declare -A namedParams
+declare -ag flags anonParams
+declare -Ag namedParams
 
 Reset() {
-  flag=()
+  flags=()
   namedParams=()
   anonParams=()
-  bad=()
 }
 
 SetSubtestName "ParseParameters -a" 'a'
