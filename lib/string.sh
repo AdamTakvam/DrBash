@@ -6,24 +6,43 @@ declare -g DEFAULT_IFS=$' \t\n'
 #
 # Ways to avoid pissing off IFS:
 #
-# 1. Issue an actual command.
+# 1. Never use inline variable assignment
+#       To accomplish inline variable assignment 
+#       i.e. IFS=':' myVar=(${IJustWalkedFaceFirstIntoTheStupidAgainDidntI})
+#       Bash simply declares a local IFS in the new subshell created by your command and loads it with your value.
+#       That way, when your command finishes executing and destroys its subshell, the chaged variable goes away with it.
+#       If this sounds like a clever solution to you, as it almost certainly did to the jackhole who wrote it, you don't know bash.
+#       The problem is the word 'command'. Only commands create subshells. There are LOTS of other options...
+#       If you do anything other than run a command, no subshell is created.
+#       In that case, the local IFS gets bound to your current shell... and hilarity seldom ensues.
 #       myArray=($delimited_string) is NOT a command!
 #       commands are things that spawn subshells.
 #       That's how they achieve that "only for this line" behavior.
-#       Bash simply declares a local IFS in the new subshell and loads it with your value.
-#       But if there is no subshell, the local IFS gets bound to your current shell... and hilarity seldom ensues.
 #
 #       Things that create subshells:
-#           * Function calls
-#           * Anything that involves executing a file
+#           * Commands: Directly executing a program or script
 #           * The seashore
 #
 #       Things that do NOT create subshells:
+#           * Function calls
 #           * Executing shell builtins (e.g. read, if, while, test, pwd, echo/printf, eval, etc.)
 #           * Sourcing other scripts
 #           * Variable declarations
 #           * Simple variable assignment statements
+#           * Pipes | and redirections of all sorts: >, <, <<, < <, <<<
 #           * Math: (( ... ))
+#
+#         Things that do create subshells but still don't work because that's how stupid this feature is:
+#           * Variable substition: $() 
+#           * Accidentally not using inline variable assignment. I can't tell you how often I see this shit:
+#             IFS='-'; RunSomething
+#             The semicolon means that's the end of that command. 
+#             Therefore, the variable assignment is treated as if it appeared on the preceding line!
+#
+#         TL;DR:
+#           * This works as expected, but is pointless and stupid: IFS=| ls
+#           * Any operation that could actually makeuse of IFS will bleed the temporary value
+#           * Therefore, NEVER use inline variable assignment with IFS
 #
 # 2. If the operation you want to perform does not create a subshell normally, force it to.
 #       These execution structures always create subshells:
