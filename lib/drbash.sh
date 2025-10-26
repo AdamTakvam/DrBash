@@ -34,7 +34,74 @@
 
 # Prevent re-sourcing
 [ "$__drbash" ] && return 0
-__drbash=1
+declare -g __drbash=1
+
+# Verify platform conditions
+ValidatePlatform() {
+  case "$(uname -s)" in
+    Linux)
+      ;;      # Pass
+    Darwin)
+      printf "\e[31m[ERROR]\e[0m No matter how hard you wish for it, MacOS is not Linux.\n" >&2
+      printf "Dr Bash runs on real penguins, not fruit-branded BSD derivatives.\n" >&2
+      printf "You can fix this by:\n" >&2
+      printf "  1. Installing Linux\n" >&2
+      printf "  2. Or pretending hard enough\n" >&2
+      printf "Note: Option 2 is ineffective unless you pretend so hard that you rupture the artery in your forehead." >&2
+      printf "  Don't quit now. You're almost there!" >&2
+      exit 666 ;;
+    *)
+      printf "\e[31m[ERROR]\e[0m Unsupported operating system: %s\n" "$(uname -s)" >&2
+      printf "Dr Bash is designed exclusively for Linux distributions.\n" >&2
+      exit 10 ;;
+  esac
+}
+
+ValidateDistro() {
+  if [[ -z "$(cat /etc/os-release | grep -i 'debian')" ]]; then
+    printf "\e[31m[ERROR]\e[0m Dr. Bash only works with Debian Linux and it's derivatives.\n"
+    printf "Even then, we really only test with Debian and Ubuntu.\n"
+    printf "Beyond those two, we logically assume that ir should work with the others, but wew don't really know for sure.\n"
+    printf "What we do know for certain, however, is that until a serious porting effort happens, non-Debian-based distros don't have a prayer of working!"
+    exit 20
+  fi
+}
+
+ValidateBash() {
+  case ${BASH_VERSION::1} in
+    5)
+      ;;
+    4)
+      if (( ${BASH_VERSION:2:1} < 3 )); then
+        printf "\e[31m[ERROR]\e[0m Dr. Bash requires bash 4.3 to operate and bash 5.x is highly recommended.\n"
+        exit 30
+      else
+        printf "The version of bash you have installed should work with most components of Dr. Bash.\n"
+        printf "But it only takes one well-meaning change to break compatability with older bash versions.\n"
+        printf "We strongkly recommend upgrading to bash 5.x to ensure a smooth and pleasant experience.\n"
+      fi ;;
+    *)
+      printf "\e[31m[ERROR]\e[0m Honestly now, did you really think that a Dr Bash script was going to run on this old ass version of bash?\n"
+      printf "I mean, there's daring to dream and there's living your life in denial.\n"
+      printf "You know as well as I do that you don't have a legitimate reason to be running this antique version of bash.\n"
+      printf "What do you say? Let's just solve this problem right here and now.\n"
+      printf "Only you can prevent forest fires!\n"
+      read -n1 -p "Help me help you... [Y/n]? " helpme; echo
+      if [[ "${helpme,,}" != 'n' ]]; then
+        sudo apt update && sudo apt upgrade -y
+        apt-mark minimize-manual 
+        apt autoremove -y
+        exit 39
+      else
+        exit 31
+      fi ;;
+  esac
+}
+
+# Verify that this system meets the preconditions necessary for a delightful Dr Bash experience to be had.
+ValidatePlatform
+ValidateDistro
+ValidateBash
 
 DRB_LIB="${DRB_LIB:-/usr/local/lib}"
 
