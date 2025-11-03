@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 [[ -n $__input ]] && return
 declare -g __input=1
 
@@ -40,16 +42,20 @@ ClearHistory() {
 
 # Reads user input in a far more user-friendly way and adds it to app-local history, if initialized.
 # Usage:  $1 = The name of a variable to hold the result (just like read() except it comes first)
+#               If the variable is an array, then the value entered will be divided into fields
+#               and each field will be stored sequentially in the provided array.
 #         $2 = Your prompt text (Empty string will be interpreted as $PROMPT or, failing that, "> ")
 #         $3 = A default value for the user to start with. Just pass "" if none.
-#         $4+ = Whatever else you would normally pass into read (-e and -r are already included). 
+#         $4+ = Whatever else you would normally pass into read (-e, -i, -p, and -r are already included). 
 # The prompt must be supplied via -p or not at all.
 # (That's just the way it is. Don't come crying to me when you fuck around and find out why!)
 EditorLine() {
   [[ -z "$1" ]] && return 99  # We're not doing that REPLY garbage!
   printf "\n"                 # I know you don't like it, but don't delete this shit again!
                               # Take it up with the dropouts who wrote readline()
-  local _input _output="$1" _prompt="$2" _default="$3"
+  local _input 
+  local -n _output="$1" 
+  local _prompt="$2" _default="$3"
   shift; shift; shift         # You think this looks stupid? Go ahead and change it, then. I dare ya!
 
   _prompt="${_prompt:-$PROMPT}"
@@ -67,12 +73,19 @@ EditorLine() {
   PushHistory "$_input"
 
   # Return the input characters via variable reference
-  printf -v $_output "%s" "$_input"
-
-  # OK, that printf line above is not for the weak. So I'll break down exactly what's going on...
-  # In colloquial English, that line says:
-  #   "Take the value of _input, pass it through the %s (literal) renderer, 
-  #   and save the result in the variable whose name is the value of the _output variable (instead of stdout)."
+  local outType="$(GetVarType '_output')"
+  case "$outType" in
+    string | integer)
+      _output="$(printf '%s' "$_input")" ;;
+    array)
+      readarray -t _output <<< "$_input" ;;
+    dictionary)
+      _output[REPLY]="$_input" ;;
+    *)
+      LogError "Received an unknown data type ($outType) intended to hold user input."
+      return 9 ;;
+  esac
+  return 0
 }
 
 # Reads user input and adds it to app-local history, if initialized.
