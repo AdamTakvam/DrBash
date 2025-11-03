@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 # The is the logging subsystem of Dr. Bash.
 #
 # The API supports logging to the console or to the Systemd Journal
@@ -754,9 +756,9 @@ CreateFontCode() {
 
   # Correct invalid params to something that works
   if [[ $color < 30 || $color > 37 ]]; then
-    color=$(( (color % 7) + 31 ))
+    color=$(( (color % 8) + 30 ))
   elif [[ $style < 0 || $style > 7 ]]; then
-    style=$(( style % 7 ))
+    style=$(( style % 8 ))
   elif [[ $bgrnd < 40 || $bgrnd > 47 ]]; then
     bgrnd=$(( (bgrnd % 8) + 40 ))
   fi
