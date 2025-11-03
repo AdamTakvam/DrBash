@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 # The set of functions in this library are intended for general use in all types of scripts
 # They represent generic, common functionality that most scripts require
 # 
@@ -56,14 +58,19 @@ IsSourced() {
   #   and the script that kicked off this madness.
   # Yes, I'm well aware of your [[ ${BASH_SOURCE[0]} != $0 ]] trick and it doesn't work here.
   #   I'll leave to you to figure out why. For bonus points, why did I initialize i to 1 and not 0?
+  local execScript="$(basename "$0")"
+  local thisScript="$(basename "${BASH_SOURCE[0]}")"
   local i
   for (( i = 1; i < ${#BASH_SOURCE[@]}; i++ )); do
-    # If the callstack entry is not equal to the name of the executing script...
-    [[ "${BASH_SOURCE[$i]}" == "$0" ]] && continue
-    # and it's not equal to the name of this script...
-    [[ "${BASH_SOURCE[$i]}" == "${BASH_SOURCE[0]}" ]] && continue
-    # then we been invoked in that funny left-handed sort of way!
-    return 0
+    case "$(basename "${BASH_SOURCE[$i]}")" in
+      # If the callstack entry is not equal to the name of the executing script...
+      # and it's not equal to the name of this script...
+      $execScript | $thisScript)
+        continue ;;
+      # then we been invoked in that funny left-handed sort of way!
+      *)
+        return 0 ;;
+    esac
   done
   return 1
 }
