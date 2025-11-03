@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 [[ -n $__cli ]] && return 0
 declare -g __cli=1
 

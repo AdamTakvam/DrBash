@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 [[ -n "$__arrays" ]] && return
 declare -g __arrays=1
 

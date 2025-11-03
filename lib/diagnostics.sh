@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 # Suite of functions related to diagnosing and debugging scripts
 
 trap 'echo "[$(date +"%T")] ERROR: ${BASH_SOURCE[0]}:${LINENO} (${FUNCNAME[0]})" >&2' ERR

@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 # This script reads the Dr Bash global configuration file: global.conf
 # This file doesn't usually have to be sourced directly because it's sourced from other common include files.
 

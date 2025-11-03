@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 [[ -n $__string ]] && return 0
 declare -g __string=1
 

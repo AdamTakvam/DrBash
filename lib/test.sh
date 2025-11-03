@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 declare -i fail=0
 
 Raw() {

@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 [[ -n $__reflection ]] && return 0
 declare -g __reflection=1
 

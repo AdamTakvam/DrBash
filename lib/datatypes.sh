@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 [[ ${__datatypes-} == 1 ]] && return 1
 declare -g __datatypes=1
 

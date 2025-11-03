@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 # This is the primary entry point to load the Dr. Bash platform.
 # While you're free to piecemeal it if you want to save that 75ms
 # It is recommended to include this file and get the whole thing,

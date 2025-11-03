@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 [[ -n $__help ]] && return 0
 declare -g __help=1
 

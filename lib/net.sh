@@ -1,3 +1,5 @@
+# vim: filetype=bash
+
 [[ -n $__net ]] && return 0
 declare -g __net=1
 
