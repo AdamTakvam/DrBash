@@ -1,26 +1,25 @@
 name: Functional Tests
 
-env:
-  USERLIB: ${{ github.workspace }}/lib
-
 on:
   push:
   pull_request:
 
 jobs:
-  test-logging:
+  test-lib:
     runs-on: ubuntu-latest
+    strategy:
+      # Run every suite even when one of them fails
+      fail-fast: false
+      matrix:
+        suite: [arrays, cli, config, datatypes, logging, run, string]
+    defaults:
+      run:
+        working-directory: lib
+    env:
+      DRB_LIB: .
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Make test scripts executable
-        run: chmod +x $USERLIB/test.logging.sh
-        run: chmod +x $USERLIB/test.arrays.sh
-
-      - name: Run logging tests
-        run: $USERLIB/test.logging.sh
-
-        name: Run array tests
-        run: $USERLIB/test.arrays.sh
-
+      - name: Run ${{ matrix.suite }} tests
+        run: bash ./test.${{ matrix.suite }}.sh
