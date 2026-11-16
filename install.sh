@@ -79,7 +79,7 @@ ShowSalutation() {
   echo
   printf "%b\n" "We don't edit people's startup files automatically because a lot of folks are picky about how their shit is set up."
   echo
-  read -n1 "But would you like us to just cram those lines in just any old place as long as it works (y/N)? " choice
+  read -n1 -p "But would you like us to just cram those lines in just any old place as long as it works (y/N)? " choice; echo
   if [[ "${choice,,}" == 'y' ]]; then
     printf "%b\n" "${setvars[@]}" >> ~/.bashrc
     printf "%b\n" "We told you it wouldn't hurt! You let us stuff those lines right up your boot file like pro! We're proud of you!"
@@ -98,7 +98,7 @@ InstallManpages() {
 }
 
 VerifyInstallerIntegrity() {
-  case "$edition" in
+  case "${edition,,}" in     # edition is "Full" or "Lite"
     full) 
       [[ -d full ]] || InstallCorrupted ;;
     lite) 
@@ -124,9 +124,9 @@ DoInstall() {
     if [[ -z "$DRB_MEDIA_REPO" ]]; then
       printf "%b\n" "No media repo? No problem. We'll just switch you to the lite install..."
       edition="Lite"
-      pause
-      read "Are feeling confused and getting panicky right now, afraid that you've made a mistake? (Y/n)? " mistake
-      if [[ "${mistake,,}" == 'y' ]]; then
+      read -n1 -s -r -p "Press any key to continue..."; echo
+      read -n1 -p "Are you feeling confused and getting panicky right now, afraid that you've made a mistake? (Y/n)? " mistake; echo
+      if [[ "${mistake,,}" != 'n' ]]; then   # Y is the default
         printf "%b\n" "Yeah, we thought so. We're just going to let you out of the installer without any harm done."
         printf "%b\n" "The next thing you want to do is run: ./install -h"
         printf "%b\n" "That should thoroughly explain what's going on so that you can complete this installation confidently."
