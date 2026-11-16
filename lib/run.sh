@@ -217,24 +217,31 @@ _Run_FindCmd() {
     return 0
   fi
 
+  # Note: Each of the DRB_* checks below is skipped when that variable is unset.
+  #   Otherwise "$DRB_SRC/" becomes "/" and the find below scans the entire filesystem.
+
   # Is $cmd in the DRB_BIN directory?
-  if [ -x "$DRB_BIN/$cmd" ]; then 
+  if [ -n "$DRB_BIN" ] && [ -x "$DRB_BIN/$cmd" ]; then
     LogDebugError "$FNAME: $cmd is a file in $DRB_BIN."
     echo "$DRB_BIN/$cmd"
     return 0
   fi
-  
+
   # What about DRB_SRC? (remember it has subdirectories)
-  local match="$(find "$DRB_SRC/" -executable -type f -name "$cmd" | head -1)" 
-  if [ -x "$match" ]; then
+  local match=""
+  [ -n "$DRB_SRC" ] && [ -d "$DRB_SRC" ] \
+    && match="$(find "$DRB_SRC/" -executable -type f -name "$cmd" 2>/dev/null | head -1)"
+  if [ -n "$match" ] && [ -x "$match" ]; then
     LogVerboseError "$FNAME: The best last-ditch effort to find $cmd is $match. I hope we're right..."
     echo "$match"
     return 0
   fi
 
   # What about DRB_LIB?  <-- Nothing in DRB_LIB should be executable, but whatevs...
-  [ -x "$DRB_LIB/$cmd" ] && { echo "$DRB_LIB/$cmd"; return 0; }
-  [ -x "$DRB_LIB/$cmd.sh" ] && { echo "$DRB_LIB/$cmd.sh"; return 0; }
+  if [ -n "$DRB_LIB" ]; then
+    [ -x "$DRB_LIB/$cmd" ] && { echo "$DRB_LIB/$cmd"; return 0; }
+    [ -x "$DRB_LIB/$cmd.sh" ] && { echo "$DRB_LIB/$cmd.sh"; return 0; }
+  fi
 
   # Then we have no fucking idea how to run $cmd
   LogVerboseError "$FNAME Error: All efforts to locate the executable $cmd have failed!"
