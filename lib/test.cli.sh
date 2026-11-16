@@ -108,7 +108,9 @@ AssertEqual '1 2' "${namedParams[a]}"
 Reset
 
 SetSubtestName "echo \"-abc '1 2'\" | ParseParameters --" 'f'
-echo "-abc 1 2" | ParseParameters 'flags' 'namedParams' 'anonParams' --
+# Not 'echo ... | ParseParameters': the right side of a pipe runs in a subshell,
+#   so the arrays it fills would vanish before the asserts could see them.
+ParseParameters 'flags' 'namedParams' 'anonParams' -- <<< "-abc '1 2'"
 AssertEqual '3' ${#flags[@]}
 AssertEqual '1 2' "${anonParams[0]}"
 Reset
@@ -141,10 +143,10 @@ SetSubtestName 'CombineParams -ab -c' 'b'
 AssertEqual '-abc' "$(CombineParams -ab -c)"
 
 SetSubtestName 'CombineParams -a -b -c zyx 123' 'c'
-AssertEqual '-abc zyx 123' "$(CombineParams -a -b -c xyz 123)"
+AssertEqual '-abc zyx 123' "$(CombineParams -a -b -c zyx 123)"
 
 SetSubtestName 'echo "xyz 123" | CombineParams -a -b -c --' 'd'
-AssertEqual '-abc zyx 123' "$(echo "xyz 123" | CombineParams -a -b -c --)"
+AssertEqual '-abc xyz 123' "$(echo "xyz 123" | CombineParams -a -b -c --)"
 
 SetSubtestName 'CombineParams -a=1 -b -c zyx 123' 'e'
 AssertEqual '-a=1 -bc zyx 123' "$(CombineParams -a=1 -b -c zyx 123)"

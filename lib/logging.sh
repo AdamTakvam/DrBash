@@ -20,13 +20,16 @@ source "${DRB_LIB:=/usr/local/lib}/cli.sh"
 _Log() {
   local _msg _param
 
+  # Note: The options are parsed by hand rather than with GetParamName() because
+  #   they're multi-character (-ln, -lrn) and GetParamName() only accepts
+  #   $NUM_FLAG_CHARS characters, which is a CLI setting that logging shouldn't depend on.
   if [[ "$2" == -- ]]; then
     _msg="$(cat)"
-    _param="$(GetParamName "$1")"; shift
+    _param="${1#-}"; shift
   elif [[ "$1" == -- ]]; then
     _msg="$(cat)"
-  elif [[ "$1" =~ ^-[a-zA-Z0-9]+ ]]; then
-    _param="$(GetParamName "$1")"; shift
+  elif [[ "$1" =~ ^-[a-zA-Z0-9]+$ ]]; then
+    _param="${1#-}"; shift
     _msg="$@"
   else
     _msg="$@"
@@ -169,8 +172,9 @@ Log() {
   local _msg=""
   for p in "$@"; do
     if [[ "$p" =~ ^-[a-zA-Z0-9]+ ]]; then
-      local pn="$(GetParamName "$p")"
-      local pv="$(GetParamValue "$p")"
+      # Parsed by hand for the same reason as in _Log()
+      local pn="${p#-}"; pn="${pn%%=*}"
+      local pv=""; [[ "$p" == *=* ]] && pv="${p#*=}"
   
       # The parameters handled here are for internal use only
       case "$pn" in

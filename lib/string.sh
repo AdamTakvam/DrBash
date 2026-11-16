@@ -198,14 +198,10 @@ GetChars() {
 
   [ -z "$str" ] && return
 
-  # Note: This declaration is essential to prevent changes to IFS from bleeding 
-  #   outside of this function. Setting IFS inside the 'while read' construct 
-  #   will corrupt IFS in the current shell if a local copy is not declared
-  #   because read is a shell builtin and therefore does not spawn a subshell.
-  #   which is a seldom-mentioned requirement for "temporary" variable prefixing.
-  local IFS=
-
-  while read -r -n1 c; do
-    _out+=("$c")
-  done <<< "$str"
+  # Slice the string directly. (Reading it with 'read -n1' from a here-string
+  #   also returned the here-string's trailing newline as an extra empty character.)
+  local -i i
+  for (( i=0; i < ${#str}; i++ )); do
+    _out+=("${str:i:1}")
+  done
 }

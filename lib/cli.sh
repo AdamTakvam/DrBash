@@ -68,23 +68,56 @@ GetParamValue() {
   fi
 }
 
+# Internal: Reads stdin and splits it into words the way the shell would
+#   (honoring '...', "..." and \ escapes) WITHOUT evaluating anything in it.
+# + $1 = The name of an array to receive the words
+# + stdin = The text to split
+_Cli_ReadStdinWords() {
+  local -n _words="$1"
+  local _w
+  _words=()
+  while IFS= read -r -d '' _w; do
+    _words+=("$_w")
+  done < <(xargs -r printf '%s\0')
+}
+
 # Combines individual simple flag parameters into one combined parameter
 # This makes it easier for your script to accept both forms.
 #   e.g. -t -y -p -> -typ
-# + $@ = Individual parameters
-# - stdout = The combined parameter
+# Everything else (named params, --long params, values) keeps its position.
+# The combined flag takes the position of the first simple flag.
+#   e.g. -a=1 -b -c --long xyz -> -a=1 -bc --long xyz
+# + $@ = Individual parameters, or -- as the last one to also read parameters from stdin
+# + stdin = More parameters (if -- specified)
+# - stdout = The parameters, space-separated, with simple flags combined
 CombineParams() {
-  local _param='-' _others=''
-  if [ "$1" ]; then                                                                                                                                     for p in "$@"; do
-      [[ "$p" =~ -[a-zA-Z0-9] ]] \
-          && _param+="${p:1}" \
-          || _others+="$p "
-    done
-    printf "%s" "$_param $_others"
-    return 0
-  else
-    return 99
+  (( $# )) || return 99
+
+  local -a _in=("$@") _out=()
+  if IsPipedDataParam "${_in[-1]}"; then
+    unset '_in[-1]'
+    local -a _stdin
+    _Cli_ReadStdinWords _stdin
+    _in+=("${_stdin[@]}")
   fi
+
+  local _flags='' p
+  local -i _slot=-1
+  for p in "${_in[@]}"; do
+    if [[ "$p" =~ ^-[a-zA-Z0-9]+$ ]]; then
+      if (( _slot < 0 )); then
+        _slot=${#_out[@]}
+        _out+=("")
+      fi
+      _flags+="${p:1}"
+    else
+      _out+=("$p")
+    fi
+  done
+  (( _slot >= 0 )) && _out[_slot]="-$_flags"
+
+  local IFS=' '
+  printf "%s" "${_out[*]}"
 }
 
 # Separates combined flag parameters into an array of simple parameters
@@ -97,32 +130,33 @@ CombineParams() {
 #         All others are returned in the same condition they were received.
 # - stdout = list of null-delimited parameters
 SeparateParameters() {
-  [[ $NUM_FLAG_CHARS == 1 ]] || return 0  # Don't separate params if caller allows multi-char flags
-
   local -n _outParams="$1"; shift         # array
-  local -i _result=1
 
+  # Don't separate params if caller allows multi-char flags
+  if [[ $NUM_FLAG_CHARS != 1 ]]; then
+    _outParams+=("$@")
+    return 1
+  fi
+
+  local -i _result=1
+  local param c
   for param in "$@"; do
-    echo "SeparateParameters: param(1) = $param"
-    local tok=$(Trim $param)
-    echo "SeparateParameters: param(2) = $param"
-    case "$tok" in
-      --*)
-        _outParams+=("$tok") ;;
-      -*=*)
-        _outParams+=("$tok") ;;
-      -*)
+    case "$param" in
+      --* | -*=*)
+        _outParams+=("$param") ;;
+      -?*)
         local -a _chars=()
-        GetChars '_chars' "$tok"
+        GetChars '_chars' "${param:1}"
         for c in "${_chars[@]}"; do
-          case $c in ' ' | -) ;;
+          case "$c" in 
+            ' ' | -) ;;
             *)
               _outParams+=("-$c")
               _result=0 ;;
           esac
         done ;;
       *)
-        _outParams+=("$tok") ;;
+        _outParams+=("$param") ;;
     esac
   done
   return $_result
@@ -198,27 +232,19 @@ ParseParameters() {
     done
   }
 
-  local -a _TOKENS=()
-  SeparateParameters _TOKENS "$@"
-
-  # Build argv to parse from either a named array ($5) or stdin when $5 == "--"
-  if IsPipedDataParam "${_TOKENS[-1]}"; then
-    unset '_TOKENS[-1]'
-    # Read stdin as a single line respecting shell-like word splitting
-    # Use read -r -a to split like the shell (handles quoted values inside the line)
-    local _line=''
-    local IFS= 
-    read -r _line
-    # If multiple lines, slurp the rest appended with spaces
-    if [[ ! -t 0 ]]; then
-      local _extra
-      while IFS= read -r _extra; do
-        _line+=" $_extra"
-      done
-    fi
-    # Now split into tokens using bash itself
-    _TOKENS+=(${_line})
+  # If the last parameter is --, replace it with the words read from stdin.
+  # This happens BEFORE separating, so that stdin gets the exact same treatment
+  #   as parameters given on the command line (e.g. -abc -> -a -b -c).
+  local -a _ARGS=("$@")
+  if (( ${#_ARGS[@]} )) && IsPipedDataParam "${_ARGS[-1]}"; then
+    unset '_ARGS[-1]'
+    local -a _stdin
+    _Cli_ReadStdinWords _stdin
+    _ARGS+=("${_stdin[@]}")
   fi
+
+  local -a _TOKENS=()
+  SeparateParameters _TOKENS "${_ARGS[@]}"
 
   # Parse
   _parse_tokens _TOKENS
