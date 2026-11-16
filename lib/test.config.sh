@@ -2,6 +2,13 @@
 
 source "${DRB_LIB:-.}/test.sh"
 source "${DRB_LIB:-.}/logging.sh"
+
+# config.sh reads $DRB_DATA/global.conf as soon as it's sourced and exits if it's missing.
+# Point it at a throwaway one so this test doesn't depend on (or touch) the real config.
+DRB_DATA="$(mktemp -d)"
+trap 'rm -rf "$DRB_DATA"' EXIT
+touch "$DRB_DATA/global.conf"
+
 source "${DRB_LIB:-.}/config.sh"
 
 SetTestName "ValidateConfigValue 'blah'"
