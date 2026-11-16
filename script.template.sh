@@ -2,7 +2,7 @@
 
 # WORK IN PROGRESS
 
-source "${DRB_LIB:-/usr/local/lib/DrBash}/general.sh"
+source "${DRB_LIB:-/usr/local/lib}/general.sh"
 declare -r APPNAME="script.template"
 
 PrintHelp() {
@@ -37,7 +37,7 @@ PrintHelp() {
 }
 
 ParseCLI() {
-  for p in $@; do
+  for p in "$@"; do
     case "$p" in
       $(LogParamsCase))  
         ;;        # Ignore these. They are handled for you
@@ -55,7 +55,7 @@ ParseCLI() {
 }
 
 Main() {
-  ParseCLI
+  ParseCLI "$@"
 
   # Do amazing shit!
 }
@@ -70,5 +70,5 @@ Main() {
 # I don't want to hear "But logging.sh runs code unconditionally!"
 # Logging.sh was written by Ascended Bash Masters. It is perfect in every way... EVERY. WAY.
 if [ "${BASH_SOURCE[0]}" == "$0" ]; then
-  Main
+  Main "$@"
 fi

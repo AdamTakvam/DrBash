@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${DRB_LIB:-/usr/local/lib/DrBash}/drbash.sh"
+source "${DRB_LIB:-/usr/local/lib}/drbash.sh"
 
 declare -r SCRIPT_NAME="mkbinlink"
 

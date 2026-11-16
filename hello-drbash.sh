@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -o pipefail
 
-: "${DRB_LIB:?Edit your ~/.bashrc file and add: export DRB_LIB=/usr/local/lib/drbash}"
+: "${DRB_LIB:?Edit your ~/.bashrc file and add: export DRB_LIB=/usr/local/lib}"
 source "$DRB_LIB/drbash.sh"
 
 Help() { 

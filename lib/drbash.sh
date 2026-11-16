@@ -49,9 +49,9 @@ ValidatePlatform() {
       printf "You can fix this by:\n" >&2
       printf "  1. Installing Linux\n" >&2
       printf "  2. Or pretending hard enough\n" >&2
-      printf "Note: Option 2 is ineffective unless you pretend so hard that you rupture the artery in your forehead." >&2
-      printf "  Don't quit now. You're almost there!" >&2
-      exit 666 ;;
+      printf "Note: Option 2 is ineffective unless you pretend so hard that you rupture the artery in your forehead.\n" >&2
+      printf "  Don't quit now. You're almost there!\n" >&2
+      exit 66 ;;  # Would be 666, but exit codes wrap at 256 and the Beast came out as 154
     *)
       printf "\e[31m[ERROR]\e[0m Unsupported operating system: %s\n" "$(uname -s)" >&2
       printf "Dr Bash is designed exclusively for Linux distributions.\n" >&2
@@ -88,11 +88,12 @@ ValidateBash() {
       printf "You know as well as I do that you don't have a legitimate reason to be running this antique version of bash.\n"
       printf "What do you say? Let's just solve this problem right here and now.\n"
       printf "Only you can prevent forest fires!\n"
-      read -n1 -p "Help me help you... [Y/n]? " helpme; echo
-      if [[ "${helpme,,}" != 'n' ]]; then
+      printf "(This runs a full 'apt upgrade' of your whole system, so it's opt-in.)\n"
+      read -n1 -p "Help me help you... [y/N]? " helpme; echo
+      if [[ "${helpme,,}" == 'y' ]]; then
         sudo apt update && sudo apt upgrade -y
-        apt-mark minimize-manual 
-        apt autoremove -y
+        sudo apt-mark minimize-manual -y
+        sudo apt autoremove -y
         exit 39
       else
         exit 31

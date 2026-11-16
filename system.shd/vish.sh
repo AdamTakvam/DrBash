@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "${DRB_LIB:-/user/local/lib}/logging.sh"
+source "${DRB_LIB:-/usr/local/lib}/logging.sh"
 
 declare -r APPNAME=vish
 
