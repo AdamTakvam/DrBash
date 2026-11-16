@@ -79,7 +79,7 @@ EditArray() {
 SerializeArray() {
   local NUM_FLAG_CHARS=2  # Tell the parameter parsing logic how to interpret our flags
   local -i quotes=0 crlf=0 sortArray=0 delim_pre=0 delim_post=0
-  local delim='' p e            
+  local delim='' p e d1='' d2='' d3=''
 
   local -a params=("$@")         
   local -n array="${params[-1]}" 
@@ -88,8 +88,15 @@ SerializeArray() {
 
   for (( i=0; i < ${#params[@]}-1; i++ )); do
     local p="${params[$i]}"
-    local pn="$(GetParamName "$p")"  
-    local pv="$(GetParamValue "$p")"
+    local pn pv
+    case "$p" in
+      # GetParamName() only accepts [A-Za-z0-9_], so it can't parse these two
+      -d^ | -d$)
+        pn="${p#-}" ;;
+      *)
+        pn="$(GetParamName "$p")"
+        pv="$(GetParamValue "$p")" ;;
+    esac
 
     case "$pn" in
       q)
@@ -140,7 +147,7 @@ SerializeArray() {
     printf '%s\n' "${resultStr::-1}"
   elif (( $delim_post == 0 )); then
     # If no trailing delimiter, then remove it
-    printf '%s\n' "${resultStr%${delim}*}"
+    printf '%s\n' "${resultStr%"$delim"*}"   # Quoted so a delimiter like '*' isn't a pattern
   else
     printf '%s\n' "${resultStr}"
   fi

@@ -125,16 +125,19 @@ b64_dec() { base64 -d; }
 # + $3 = The string to split.
 Split() {
   local -n _out="$1"
-  local delim="$2"
+  local delim="${2:-$' \t\n'}"
   local str="$3"
-  local IFS=
+  local IFS= field
 
   _out=()
-  set -f   # disable globbing
+  # Disable globbing, but only re-enable it afterwards if it was enabled to begin with
+  local _globOff=0
+  [[ $- == *f* ]] && _globOff=1
+  set -f
   while IFS="$delim" read -r -d '' field; do
     _out+=("$field")
-  done < <(printf '%s%s' "$str" "$delim" | tr "$delim" '\0')
-  set +f   # re-enable globbing
+  done < <(printf '%s%s' "$str" "${delim::1}" | tr "$delim" '\0')
+  (( _globOff )) || set +f
 }
 
 # Specialty Function: Returns the number of times a given string appears within another.

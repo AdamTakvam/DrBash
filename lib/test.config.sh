@@ -1,7 +1,8 @@
 #!/bin/bash
 
-source "test.sh"
-source "./config.sh"
+source "${DRB_LIB:-.}/test.sh"
+source "${DRB_LIB:-.}/logging.sh"
+source "${DRB_LIB:-.}/config.sh"
 
 SetTestName "ValidateConfigValue 'blah'"
 TESTVALUE='blah'
@@ -86,3 +87,4 @@ TESTVALUE='C:\stupid=//clownpenis/fart'
 _ValidateConfigValue TESTVALUE
 AssertFail $?
 
+exit $fail

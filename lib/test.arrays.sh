@@ -23,3 +23,5 @@ for (( i=0; i<${#testInputs[*]}; i++ )); do
   SetTestName "SerializeArray ${params[@]} (${input[@]}) -> (${expOutput[@]})"
   AssertEqual "${expOutput[@]}" "$(SerializeArray $params "input")"
 done
+
+exit $fail

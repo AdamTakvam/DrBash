@@ -82,3 +82,5 @@ AssertEqual "lowercase" "$(GetVarCase 'lowercaseVar')"
 SetSubtestName "GetVarCase <lowercase_reference>" 'd'
 AssertEqual "lowercase" "$(DoIndirectTest GetVarCase 'lowercaseVar')"
 
+
+exit $fail

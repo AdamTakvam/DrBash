@@ -1,8 +1,8 @@
 #!/bin/bash
 
-source test.sh
-source logging.sh
-source string.sh
+source "${DRB_LIB:-.}/test.sh"
+source "${DRB_LIB:-.}/logging.sh"
+source "${DRB_LIB:-.}/string.sh"
 
 declare outVar='' input='' expResult=''
 
@@ -14,7 +14,7 @@ PrintArray() {
 
 expResult="a,b,c"
 SetTestName "Split(' ' a b c)" 
-Split outVar ' ' a b c
+Split outVar ' ' "a b c"
 AssertEqual "$expResult" "$(PrintArray outVar)"
 
 expResult="a,b,c"
@@ -23,8 +23,8 @@ Split outVar '-' a-b-c
 AssertEqual "$expResult" "$(PrintArray outVar)"
 
 expResult="a b c,d,e"
-SetTestName "Split(' ' \"a b c\" d e)"
-Split outVar ' ' "a b c" d e
+SetTestName "Split(',' \"a b c,d,e\") keeps spaces when they aren't the delimiter"
+Split outVar ',' "a b c,d,e"
 AssertEqual "$expResult" "$(PrintArray outVar)"
 
 expResult="/media,Z"
@@ -40,6 +40,7 @@ AssertEqual "$expResult" "$IFS"
 
 expResult='a,*,c'
 SetTestName "Split() no filename expansion"
-Split outVar ' ' a '*' c
+Split outVar ' ' "a * c"
 AssertEqual "$expResult" "$(PrintArray outVar)"
 
+exit $fail

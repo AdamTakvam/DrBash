@@ -56,11 +56,7 @@ declare -r _LOG_TIMESTAMPS_DEF=true
 declare -r _LOG_LABELS_DEF=true
 
 VariableExists() {
-  if declare -p "$1" >/dev/null; then
-    return 0
-  else
-    return 1
-  fi
+  [[ -n "$1" ]] && declare -p "$1" >/dev/null 2>&1
 }
 
 _ValidateConfigValue() {
@@ -68,11 +64,10 @@ _ValidateConfigValue() {
   VariableExists "$configName" || return 1
   local -n configValue="$configName"
   
-  if VariableExists "$configName_TYPE"; then
-    local -n configType="$configName_TYPE"
-  else
-    local configType="string"
-  fi
+  # Note: The braces matter. "$configName_TYPE" would expand a variable named 'configName_TYPE'.
+  local typeName="${configName}_TYPE"
+  local configType="string"
+  VariableExists "$typeName" && configType="${!typeName}"
 
   LogDebug "Validating config variable: $configName"
 
@@ -80,32 +75,32 @@ _ValidateConfigValue() {
     @*)                 # Custom Regex
       local _regex="${configType:1}"
       LogDebug "Validating config value $configValue using custom regex: $_regex"
-      printf "%s" "$configValue" | grep -E "$_regex" && return 0 
+      printf "%s" "$configValue" | grep -qE "$_regex" && return 0 
       LogError "Validation of config variable $configName failed!"
       return 1 ;;
     bool)               # Boolean
       LogDebug "Validating config value $configValue as bool"
-      printf "%s" "$configValue" | grep -Ei '([01]|true|false|yes|no)' && return 0 
+      printf "%s" "$configValue" | grep -qEi '^([01]|true|false|yes|no)$' && return 0 
       LogError "Validation of config variable $configName failed!"
       return 1 ;;
     params)             # Set of function parameters
       LogDebug "Validating config value $configValue as params[]"
-      printf "%s" "$configValue" | grep -E '([[:alnum:] .-]+)' && return 0 
+      printf "%s" "$configValue" | grep -qE '([[:alnum:] .-]+)' && return 0 
       LogError "Validation of config variable $configName failed!"
       return 1 ;;
     abs_path)           # Absolute path
       LogDebug "Validating config value $configValue as absolute path"
-      printf "%s" "$configValue" | grep -E '([01]|true|false|yes|no)' && return 0 
+      [[ "$configValue" == /* ]] && return 0 
       LogError "Validation of config variable $configName failed!"
       return 1 ;;
     rel_path)           # Relative path
       LogDebug "Validating config value $configValue as relative path"
-      printf "%s" "$configValue" | grep -E '([01]|true|false|yes|no)' && return 0 
+      [[ -n "$configValue" && "$configValue" != /* ]] && return 0 
       LogError "Validation of config variable $configName failed!"
       return 1 ;;
     path)
       LogDebug "Validating config value $configValue as path"
-      printf "%s" "$configValue" | grep -E '([01]|true|false|yes|no)' && return 0 
+      [[ -n "$configValue" ]] && return 0 
       LogError "Validation of config variable $configName failed!"
       return 1 ;;
     "" | string)
