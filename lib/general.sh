@@ -13,7 +13,9 @@ declare -g __general=1
 #             1 Current user does not have sudo privileges
 HasSudo() {
   # If the user is in the 'sudo' or 'root' groups, then they can execute the 'sudo' command
-  [[ "$(groups | grep -E '\ssudo\s|\sroot\s')" ]] && return 0 || return 1
+  # Pad with spaces so that the first and last groups match too
+  local groups=" $(id -nG) "
+  [[ "$groups" == *" sudo "* || "$groups" == *" root "* ]]
 }
 export -f HasSudo
 

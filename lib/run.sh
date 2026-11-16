@@ -9,20 +9,28 @@ declare -g __run=1
 #         -u  User mode (default)
 #         -r  Run as root (will fail if you don't have the perms! lol)
 # + $2 = Command to execute
-# + stdin = Command to execute + parameters
+# + $3... = Parameters to pass to the command. Each one is passed through exactly as given:
+#           no re-quoting, word splitting, globbing, or expansion of $, `, ", etc.
+# + stdin = Command to execute + parameters (used only when no command is given).
+#           This form IS evaluated by bash, so pipes, redirects, etc. work here.
 # + $VERBOSE = Log the exact command to be executed
 # + $DEBUG = Inhibit running any environment-changing commands
+# + $QUIET = Discard the command's stdout
 # - stderr = The cammand to be executed (if $DEBUG or $VERBOSE)
 # - Returns:  #   Exit code of command
 #             98  Command could not be found
 #             99  No command was specified
+#
+# Note: The command always runs in a subshell, so shell functions can't change
+#   the caller's variables or exit the calling script. Shell functions and builtins
+#   can't be run through sudo, so they always run with user privileges.
 Run() {
   local -r FNAME="Run()"
-  local cmdName
+  local user="" root="" 
 
   # Process and mask any parameters intended for this function
-  for p in "$@"; do
-    case "$p" in
+  while (( $# )); do
+    case "$1" in
       -u)
         user=1
         shift ;;
@@ -40,40 +48,41 @@ Run() {
     HasSudo && root=1 || user=1
   fi
 
+  local -a cmd
+  if (( $# == 0 )); then
+    # A command line on stdin is a string, so it has to be evaluated by bash
+    local line
+    read -r line
+    [ -z "$line" ] && return 99
+    cmd=(bash -c "${root:+sudo -E }$line")
+  else
+    local cmdName="$1"; shift
+    LogDebugError "$FNAME: cmdName = $cmdName"
+
+    local resolved
+    if ! resolved="$(_Run_FindCmd "$cmdName")"; then
+      LogError "$FNAME Error: Command not found: $cmdName"
+      return 98
+    fi
+
+    cmd=("$resolved" "$@")
+    if [ "$root" == 1 ]; then
+      local cmdType="$(type -t "$resolved")"
+      if [ "$cmdType" == file ]; then
+        cmd=(sudo -E "${cmd[@]}")
+      else
+        LogVerboseError "$FNAME Warning: $cmdName is a shell $cmdType, which sudo can't run. Running it with user privileges."
+        root=""
+      fi
+    fi
+  fi
+
   if [ "$root" == 1 ]; then
     LogVerbose "$(ColorText LRED "Executing command with elevated privileges")"
   else
     LogVerbose "Executing command with user privileges"
   fi
 
-  # Assume that everything left is the command to be run
-  local -ra ARGV=("$@")
-  local cmdName="${ARGV[0]}"
-  LogDebugError "$FNAME: cmdName = $cmdName"
-
-  local cmd
-  if [ -z "$cmdName" ]; then
-    cmd="$(read cmd; echo "$cmd")"
-  else
-    cmd="$(_Run_FindCmd "$cmdName") "
-    if [ "$?" != 0 ]; then
-      LogError "$FNAME Error: Command not found: $cmdName"
-      return 98
-    fi
-
-    # Ensure proper parameter quoting is maintained
-    for (( index=1; $index < ${#ARGV[@]}; index++ )); do
-      local arg="${ARGV[$index]}"
-      if [[ "$arg" =~ ^- ]]; then
-        cmd+="$arg "
-      else
-        cmd+="\"$arg\" "
-      fi
-    done
-  fi
-
-  # Run the indicated command depending on the logging mode:
-  # None = Run the command
   # Run the indicated command depending on the logging mode:
   # None = Run the command
   # Verbose = Print and run the command
@@ -81,20 +90,16 @@ Run() {
   #
   # Note: Output printed to stderr so that it can be 
   #   redirected/suppressed independently of any command output. 
-  if [ "$cmd" ]; then
-    cmd="${root:+sudo -E }$cmd"
-    LogVerboseError "> $cmd"
-    if [ -z "$DEBUG" ]; then
-      [ $QUIET ] \
-        && bash -c "$cmd" >/dev/null \
-        || bash -c "$cmd"
-      return $?
-    else
-      LogDebugError "$FNAME: Not executing $cmdName command because DEBUG mode is activated."
-      return 0
-    fi
+  LogVerboseError "> $(printf '%q ' "${cmd[@]}")"
+  if [ "$DEBUG" ]; then
+    LogDebugError "$FNAME: Not executing ${cmd[0]} because DEBUG mode is activated."
+    return 0
+  fi
+
+  if [ "$QUIET" ]; then
+    ( "${cmd[@]}" ) >/dev/null
   else
-    return 99
+    ( "${cmd[@]}" )
   fi
 }
 
