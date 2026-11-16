@@ -12,7 +12,7 @@
 [[ -n "$__logging" ]] && return
 declare -g __logging=1
 
-# source "${DRB_LIB:=/usr/local/lib}/cli.sh"
+source "${DRB_LIB:=/usr/local/lib}/cli.sh"
 
 #
 # -------------------- Internal Use Only ---------------------------------------

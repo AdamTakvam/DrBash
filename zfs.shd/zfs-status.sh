@@ -1,6 +1,9 @@
 #!/bin/bash
 
 source "${DRB_LIB:-/usr/local/lib}/general.sh"
+source "${DRB_LIB:-/usr/local/lib}/run.sh"
+
+Require -die zfsutils-linux
 
 declare -r APPNAME="zfs-status"
 

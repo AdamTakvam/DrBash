@@ -109,9 +109,14 @@ Require() {
   [[ -z "$(which apt)" ]] && { LogError "apt is not installed!"; return 98; }
 
   local -i retVal=1
+  local -i die=0
 
   for pkg in "$@"; do
-    if [ -z "$(apt list --installed 2>/dev/null | grep ^$pkg\/)" ]; then
+    if [ "$pkg" == "-die" ]; then
+      die=1
+    elif [ -z "$(apt list --installed 2>/dev/null | grep ^$pkg\/)" ]; then
+      [ $die == 1 ] && { LogVerbose "$pkg not installed. Aborting..."; exit; }
+
       Log "Updating packages. Please wait..."
       sudo apt update 1>/dev/null
       if [ "$(apt list 2>/dev/null | grep ^$pkg\/)" ]; then
