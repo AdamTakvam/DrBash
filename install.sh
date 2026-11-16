@@ -60,10 +60,14 @@ ShowSalutation() {
   setvars+=("DRB_ENV=\"$DRB_ENV\"")
   setvars+=("DRB_BIN=\"$DRB_BIN\"")
   setvars+=("DRB_DATA=\"$DRB_DATA\"")
-  [[ "$edition" == full ]] && setvars+=("DRB_MEDIA=\"$DRB_MEDIA\"")
+  setvars+=("DRB_EDITION=\"$edition\"")
+  if FullInstall; then
+    setvars+=("DRB_MEDIA_LIB=\"$DRB_MEDIA_LIB\"")
+    setvars+=("DRB_MEDIA_REPO=\"$DRB_MEDIA_REPO\"")
+  fi
 
   printf "%b\n" "We're done here, but you're not quite done yet."
-  if [[ "$edition" == full ]]; then
+  if FullInstall; then
     printf "%b\n" "Regarding the media scripts specifically, you've still got some configuring to do."
     printf "%b\n" "See the README.md file for all of the details about the configuration settings you can monkey with using drbashctl."
   fi
@@ -115,9 +119,9 @@ DoInstall() {
   
   if FullInstall; then
     
-    read -p "Where is your media repository located? " DRB_MEDIA
-    
-    if [[ -z "$DRB_MEDIA" ]]; then
+    read -p "Where is your media repository located? " DRB_MEDIA_REPO
+
+    if [[ -z "$DRB_MEDIA_REPO" ]]; then
       printf "%b\n" "No media repo? No problem. We'll just switch you to the lite install..."
       edition="Lite"
       pause
@@ -138,6 +142,12 @@ DoInstall() {
   sudo cp -r env/* "$DRB_ENV"
   sudo cp -r *.shd "$DRB_SRC" 2>/dev/null || true
   sudo cp * "$DRB_SRC"
+
+  # The media scripts load their libraries from $DRB_MEDIA_LIB
+  if FullInstall; then
+    DRB_MEDIA_LIB="${DRB_SRC%/}/media.lib"
+    sudo cp -r media.lib "$DRB_MEDIA_LIB"
+  fi
 
   "$DRB_SRC/mkbinlink"
 

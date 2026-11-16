@@ -45,7 +45,7 @@ GlobalConfigFile() {
 }
 
 # Default values
-declare -r _DATA_DEF="$HOME/.drbash"
+declare -r _DATA_DEF="$HOME/.DrBash"   # Must match DRB_DATA in install.sh
 declare -r _SRC_DEF="/usr/local"
 declare -r _LIB_DEF="$_SRC_DEF/lib"
 declare -r _ENV_DEF="$_SRC_DEF/env"

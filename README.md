@@ -4,7 +4,7 @@
 [![ChatGPT](https://img.shields.io/badge/ChatGPT-4.1--Approved-blueviolet?style=flat)](https://github.com/AdamTakvam/DrBash)
 
 
-# Dr. Bash v0.5
+# Dr. Bash v0.7 (in development)
 Are you tired of the Python guys and those weird Java guys making fun of you because you're not a "real programmer"?
 Well, I am a "real programmer" who needed to do some non-trivial shell scripting one day and was appalled by so many things about the way Bash works. So I created Dr. Bash to enforce many best practices and to give your scripts not only a pile of powerful functions but also a proper structure so that it feels much more like a real programming language. 
 Unfortunately, it's still Bash. I can't make Bash fundamentally work differently, but I pushed it to its limits.
@@ -32,7 +32,7 @@ Basically, I'm just one guy and it's really late in the game to be writing a bet
 ### For users of this project:
 * Download the latest released version. If you checkout the repo, some things will certainly be broken.
 * Unzip the downloaded file
-* Run `./install full' or './install lite'
+* Run `./install full` or `./install lite`
 ** The only difference between full and lite is that lite does not include the media management module because it's huge and complex.
 ** If you just ran './install' out of habit, then you got the full version.
 * Follow any additional instructions that the installer may provide
@@ -52,11 +52,11 @@ A. Upon installation, Dr. Bash rudely smears its own entrails across the bin/, l
 Q. What if I already have stuff in those directories?
 A. Then you best look the F out! No, I'm kidding. In the unlikely event that you already have files with the same name in one of those directories, the install will fail without clobbering them.
 
-Q. "How do I upgrade Dr. Bash to a newer version?
+Q. How do I upgrade Dr. Bash to a newer version?
 A. I have no idea. Currently, there's only one version, so you really don't need to worry about this right now.
 
 Q. How do I uninstall Dr. Bash?
-A. Very carefully. I joke but it's also true. If you've written scripts on Dr. Bash, you're pretty much married to it now. That's the thing abnout libraries and frameworks. But I get it, some people are allergiuc to awesomeness and will need it out of their space. For now, those people can delete the aforementioned directories and wash their hands of it. Eventually, there will be an ./install -u or something, but it's not high on the priority list.
+A. Very carefully. I joke but it's also true. If you've written scripts on Dr. Bash, you're pretty much married to it now. That's the thing about libraries and frameworks. But I get it, some people are allergic to awesomeness and will need it out of their space. For now, those people can delete the aforementioned directories and wash their hands of it. Eventually, there will be an ./install -u or something, but it's not high on the priority list.
 
 Q. Regarding uninstallation, what if I have other things in those directories alongside Dr. Bash?
 A. Then you won't have those things anymore. Look, once you're no longer a Dr. Bash user, you're not my problem anymore. I only care about dedicated Dr. Bash users. You can uninstall using fdisk for all I care. The point is, when you use Dr. Bash, you can experience the peace of mind that comes with having at least one person in this world care about you! The moment you decide to uninstall, you're dead to me.
@@ -80,18 +80,17 @@ done
 
 # Upcoming Features (no release date commitments)
 * Finish out the template script.
-* Get `explain_this.sh` working to generate README files dynamically for the subdirectories by pulling metadata from the scripts (like a doxygen sort of thing).
-* Create a new base library `lib/help.cs` which is anticipated to be necessary to implement `explain_this.sh` the way I want to.
+* Get `explain-this.sh` working to generate README files dynamically for the subdirectories by pulling metadata from the scripts (like a doxygen sort of thing).
+* Create a new base library `lib/help.sh` which is anticipated to be necessary to implement `explain-this.sh` the way I want to.
 * Create and install actual manpages for this stuff.
 * Package as a `.deb` and perhaps trick someone into hosting it for me.
 * Create a self-diagnostic to make sure everything is installed right and call out any possible configuration errors. (aka. Deliver warm fuzzies)
-* Create a maste test runner that executes all of the functional test scripts in the repo.
-* Create a library for functional tests containing the Assert functions and whatever else is common to most tests.
+* Create a master test runner that executes all of the functional test scripts in the repo. (CI already runs them all, but there's no local runner yet.)
 * Continue development on the media management platform. I've gotten as far with it as I can with Bash and it's definitely usable in its current form. So, I started to develop the deduplication logic in Python. But I really don't have a compelling reason to learn Python, especially when I already know C# inside and out. So all future media platform development will be in C#. Sorry, not sorry.
 
 # Executable Scripts
-To get you oriented, here is a brief overview of the scripts in the root or the repo as well as the `*.shd/` subs generally. A detailed description of the `lib/` and `env/` subs can be found further down in this epic docxument.
-For informatiuon on the scripts in the `*.shd/` subs, refer to the README files in those respective subs.
+To get you oriented, here is a brief overview of the scripts in the root of the repo as well as the `*.shd/` subs generally. A detailed description of the `lib/` and `env/` subs can be found further down in this epic document.
+For information on the scripts in the `*.shd/` subs, refer to the README files in those respective subs.
 For a more detailed explanation of exactly what each script does, simply run it with the `-h` and all will be revealed.
 One near-term goal is to automate the generation of README files for each of the `*.shd/` subdirectories. `lib/` and `env/` will be automated eventually, but that's a different task due to the nature of those files.
 
@@ -106,9 +105,14 @@ To learn about all of the options and syntactical details, run the desired scrip
 ## /
 * debug.sh : A simple script to easily run any script you name in the bash debugger. You need to run this one directly with some ./ love because - unlike the *.shd/ scripts - this one isn't in your $PATH. [stable]
 * explain-this.sh : A tool that dynamically interrogates the scripts in this collection and extracts summaries of their functionality, which it then collates and displays to the user as a README-style document. [WIP]
-* mkbinlink.sh : Part of the installation process, but also helpful if you develop new scripts. It creates a symlink in your ~/bin/ directory pointing to the script file you indicate. It also handles file permissions, making sure your script is executable, and generally just helps ensure that you don't mess it up because it's easier than you think! Unlike the scripts in the *.shd/ subs, you've got to run this one with a full path to it. It's highly recommended to change to the repo root and give it the old ./ treatment. [stable]
+* mkbinlink.sh : Part of the installation process, but also helpful if you develop new scripts. It creates a symlink in `$DRB_BIN` (default: `/usr/local/bin`) pointing to the script file you indicate. It also handles file permissions, making sure your script is executable, and generally just helps ensure that you don't mess it up because it's easier than you think! Unlike the scripts in the *.shd/ subs, you've got to run this one with a full path to it. It's highly recommended to change to the repo root and give it the old ./ treatment. [stable]
 * script.template.sh : An example script that for anyone wanting to write a script leveraging this platform to be able to simply copy and get right to work with all of the platform-specific stuff already taken care of. [WIP]
-* template.shd : This is a different approach to script templating. This one accomplishes much the same goal as script.template.sh, but in a different way. This template is intended to be sourced. It provides many common functions, but delegates the custom parts to the developer by way of prescribed functions that must be implemented. It is currently experimental. [WIP]
+* template.sht : This is a different approach to script templating. This one accomplishes much the same goal as script.template.sh, but in a different way. This template is intended to be sourced. It provides many common functions, but delegates the custom parts to the developer by way of prescribed functions that must be implemented. It is currently experimental. [WIP]
+* hello-drbash.sh : The smallest possible working Dr. Bash script. Start here if you just want to see the moving parts.
+* build.sh : Packages the repo into the full and lite release tarballs (`./build.sh full|lite|clean`).
+* docgen-lib.sh : Generates Markdown documentation from the structured comments in a library file (e.g. `./docgen-lib.sh lib/logging.sh > LOGGING.md`). [WIP]
+* libgen.sh : Generates global include files. For Dr. Bash developers only. [WIP]
+* resource.sh : Re-sources a library file into your current shell while you're developing it. You must source this one, not run it.
 
 ## grav.shd
 A collection of commands to help automate the provisioning and use of Grav CMS. WordPress is a scam and it sucks.
@@ -122,7 +126,7 @@ Status:
 * Search: Primitive / Stable
 
 ## net.shd/
-A set of utilities for wrestling control of your network when you have far too many network adapters.
+A set of utilities for wresting control of your network when you have far too many network adapters.
 
 ## serial.shd/
 One word: Cisco<br>
@@ -136,38 +140,47 @@ It may be the best file system ever, but there's always room for some tweaks.
 
 # Philosophy
 
-What you're looking at is a scripting framework built in Bash for creating a suite of utilities with a common look and feel as well as a structured methodology for developemnt. So, naturally you're going to hate it at first. It's the irony of the fact that offering capabilities to people also requires introducing usability limitations. So you're going to have to take a moment and read this to be able to understand what's going on.
+What you're looking at is a scripting framework built in Bash for creating a suite of utilities with a common look and feel as well as a structured methodology for development. So, naturally you're going to hate it at first. It's the irony of the fact that offering capabilities to people also requires introducing usability limitations. So you're going to have to take a moment and read this to be able to understand what's going on.
 
-ChatGPT has reveiwed much of this code and it says that I'm taking Bash scripts somewhere that they were never intended to go. I appreciate the compliment. But I'm really just trying to make Bash follow proper programming conventions and structures as much as possible. So you'll note the use of abstractions, inheritance, separation of concerns, data-driven development and all sorts of goodies like that.
+ChatGPT has reviewed much of this code and it says that I'm taking Bash scripts somewhere that they were never intended to go. I appreciate the compliment. But I'm really just trying to make Bash follow proper programming conventions and structures as much as possible. So you'll note the use of abstractions, inheritance, separation of concerns, data-driven development and all sorts of goodies like that.
 
-To that end, the most important scripts are located in the 'lib/' directory. This is your new Base Class Libraries (BCL). In here, you will find your logging subsystem (logging.sh), a runtime abstraction (run.sh) that integrates with logging to create a sandbox-type experience, general helper utilities (general.sh), and some specialized utilties (see next section).
+To that end, the most important scripts are located in the 'lib/' directory. This is your new Base Class Libraries (BCL). In here, you will find your logging subsystem (logging.sh), a runtime abstraction (run.sh) that integrates with logging to create a sandbox-type experience, general helper utilities (general.sh), and some specialized utilities (see next section).
 
 # The Base Class Libraries (lib/)
 These are the scripts located in 'lib/'. They form the basis for all of the other scripts in this collection.
 
-## run.sh
-This is generally the main starting point and the script that you'll want to include to get the most access to the kingdom. 
+## drbash.sh
+This is the main entry point to the platform and the one file you should include. It loads every other library for you, in the right order.
 
-* Sources: general.sh, logging.sh
-* What happens when I source it? This file does nothing upon being sourced, but check the dependencies!
-* What does this file provide? This file gives you a much more capable environment for reliably executing other programs, scripts, commands, aliases, built-ins, etc. If the code isn't in your script, but it is located elsewhere, just place the word 'Run' before the normal command with all of its parameters just like you normally would and let the framework handle it.
-* "I don't get it. I can run things just fine now!" Sure, because it's your computer and you've got it all setup just the way it needs to be. So of course you can. But is my computer setup to run your stuff? How do you know? If it's not, what are you going to do about it? Run.sh answers those questions. If you write a script that requires 'ffmpeg', for example, run.sh will check whether 'ffmpeg' is installed. If it isn't, run.sh will install it. You see? There's more to this that you thought, huh? Trust the libraries. They've got your back!
-* Debug mode: logging.sh includes the concept of a debug mode which can be set by passing '-vv' to any script. Run.sh integrates with this to provide a simulation mode where anything passed in to 'Run' gets all the way to the point of being executed, but at the last moment the command that would have been executed gets logged instead. Thuis provides a built-in way to perform dry runs of things that might alter other files or do things that take a minute to set back up again before you can do another test run.
+* Copy-pasta: `source ${DRB_LIB:-/usr/local/lib}/drbash.sh`
+* What happens when I source it? It checks that you're on Linux, on a Debian-based distro, and running Bash 4.3 or newer, and complains loudly if you aren't. Then it loads `cli.sh`, `general.sh`, `config.sh`, and `logging.sh`, followed by everything else in `lib/`. If `DRB_EDITION` is `Full`, it also loads the media libraries from `$DRB_MEDIA_LIB`.
+* It also defines `=`, Dr. Bash's own version of `source`. Yes, really. Fight me.
+* Return codes: `drbash.sh` defines the exit code ranges that the whole platform uses. 0 is success, 1-9 is a general error, 10-19 means the user interrupted, 20-29 means there was nothing to do, 30-39 means a dependency or resource is missing, and 90-99 means the programmer didn't program correctly.
+
+## run.sh
+The runtime abstraction. This is how your script runs anything that isn't in your script.
+
+* Sources: [nothing] (load it via `drbash.sh`, which provides the logging and sudo helpers it needs)
+* What happens when I source it? Nothing.
+* What does this file provide? This file gives you a much more capable environment for reliably executing other programs, scripts, commands, functions, built-ins, etc. If the code isn't in your script, but it is located elsewhere, just place the word 'Run' before the normal command with all of its parameters just like you normally would and let the framework handle it. Your parameters are passed through exactly as you gave them: spaces, quotes, `$`, and all.
+* Privileges: `Run -u` runs as you, `Run -r` runs with sudo, and plain `Run` uses sudo if you have it. Shell functions can't be run through sudo, so they always run as you.
+* "I don't get it. I can run things just fine now!" Sure, because it's your computer and you've got it all setup just the way it needs to be. So of course you can. But is my computer setup to run your stuff? How do you know? If it's not, what are you going to do about it? That's what `Require` is for. If you write a script that requires 'ffmpeg', for example, `Require ffmpeg` will check whether 'ffmpeg' is installed. If it isn't, it will install it. (Or use `Require -die ffmpeg` to bail out instead of installing it.) And `CanRun` tells you whether `Run` will be able to find a command before you try. You see? There's more to this than you thought, huh? Trust the libraries. They've got your back!
+* Debug mode: logging.sh includes the concept of a debug mode which can be set by passing '-vv' to any script. Run.sh integrates with this to provide a simulation mode where anything passed in to 'Run' gets all the way to the point of being executed, but at the last moment the command that would have been executed gets logged instead. This provides a built-in way to perform dry runs of things that might alter other files or do things that take a minute to set back up again before you can do another test run.
 
 ## general.sh
-A smattering of utility methods and some annoying config loader logic.
+A smattering of utility methods.
 
-* Sources: logging.sh
-* What happens when I source it? It will attempt to source $USERDATA/media-scripts.conf. If you don't care about the media management stuff, then just put an empty file there to shut it up.
-* What does this file provide? This is a collection of generally helpful little functions around user management, sudoing, and stuff like that. It's a short file; it's probably best to just take a quick peek at it.
+* Sources: [nothing] when sourced
+* What happens when I source it? Nothing.
+* What does this file provide? This is a collection of generally helpful little functions around sudoing (`HasSudo`, `IsRoot`), script structure (`IsSourced`, `RunMain`), and stuff like that. It's a short file; it's probably best to just take a quick peek at it.
 
 ## logging.sh
 The logging subsystem. This is kind of the nexus of the whole thing. All roads lead to logging.sh.
 
-* Sources: arrays.sh
+* Sources: cli.sh
 * What happens when I source it? It will ravage your command line arguments and parse out the ones related to logging. It's self-configuring so that you don't have to worry about it. But maintaining this abstraction does mean you have to do a few things in a very specific way... (see below)
 * What does this file provide? Everything you need to log to the console or to the Systemd journal can be found here. There are four logging levels: Quiet, Normal, Verbose, and Debug. These are set automatically depending on whether the user specified -q, [nothing], -v, or -vv on the command line. There are functions for fancy formatting, colors, and all sorts of fun things. There's even an abstraction for reading user input that was recently added. 
-* So what needs to be done a specific way? Mostly, your Help() function has to be caerefully written to maintain the abstraction. Hopefully, by the time you read this, a script template will exist in the root of this repository with a working example of exactly what to do. If it isn't, then have a look at how one of the media scripts does it. media-merge.sh is a good example. If you want to see a very complex example, check out media-fixtitle-latest.sh.
+* So what needs to be done a specific way? Mostly, your Help() function has to be carefully written to maintain the abstraction. Hopefully, by the time you read this, a script template will exist in the root of this repository with a working example of exactly what to do. If it isn't, then have a look at how one of the media scripts does it. media-merge.sh is a good example. If you want to see a very complex example, check out media-fixtitle.sh.
 
 Essential functions:
 
@@ -183,7 +196,7 @@ Essential functions:
 * LogHeader - Will spit out whatever you pass into it in what appears to be bold face. Intended for situations where the header takes up the entire line.
 * Header - Same as 'LogHeader' except used when you only want to emphasize a portion of the text on a line.
 * LogTable - Accepts multiline input and renders it as a table using tab '\t' as the delimiter.
-* ColorText - Renders whatever text you pass to it in trhe color you specify. Source this file from your shell and the run 'ShowColors' to see the options.
+* ColorText - Renders whatever text you pass to it in the color you specify. Source this file from your shell and then run 'ShowColors' to see the options.
 
 "Wait a second... why would you ever need to log an error at Verbose or Debug levels?" Great question! Logically, you probably wouldn't. But this isn't logic; this is Bash. In Bash, return values are printed like any other output to stdout and then redirected by the caller to avoid actually printing on screen. In such a method, if you want something to print to the screen, then you have no other choice but to direct it through stderr.
 
@@ -192,45 +205,81 @@ Notes:
 * All of the Log* functions know how to render control characters (e.g. '\n')
 
 ## arrays.sh
-A collection of powerful methods to serializing, deserializing, and making bulk edits to arrays.
+A collection of powerful methods for serializing, deserializing, and making bulk edits to arrays.
 
 * Sources: [nothing]
 * What happens when I source it? Nothing.
-* What does this file provide? A collection of powerful methods to serializing, deserializing, and making bulk edits to arrays.
+* What does this file provide? A collection of powerful methods for serializing, deserializing, and making bulk edits to arrays.
+
+## The rest of lib/
+`drbash.sh` loads all of these for you, so you rarely need to think about them individually.
+
+* cli.sh - Command-line parameter parsing (`ParseParameters`, `CombineParams`, `SeparateParameters`, `GetParamName`, ...) and the `=` command.
+* config.sh - Reads `$DRB_DATA/global.conf` and provides `ConfigGet`/`ConfigSet` plus the default value of every setting. Note: it exits if `global.conf` doesn't exist. An empty file is fine.
+* string.sh - String helpers: `Split`, `Trim`, `GetChars`, base64, and a lengthy rant about IFS.
+* datatypes.sh - Figure out what type a variable actually is (string, integer, array, or dictionary).
+* input.sh - Reading user input, including vi-style line editing.
+* help.sh - Standardized formatting for help text.
+* reflection.sh - Functions for interrogating your own scripts. If that makes your head hurt, just close the file and step away.
+* diagnostics.sh, files.sh, net.sh - Small collections of debugging, file, and network-interface helpers.
+* test.sh - The assertion helpers used by the functional tests. Not loaded by `drbash.sh`.
 
 # The Environment Commands
-These scripts are intended to be sourced into one's environment - usually in ~/.bashrc - to serve as complimentary commands to the ones Bash natively provides. As such, the script files themselves are of little interest. The important part is the commands themselves, of which there can be many per file. So, lets dig in...
+These scripts are intended to be sourced into one's environment - usually in ~/.bashrc - to serve as complementary commands to the ones Bash natively provides. As such, the script files themselves are of little interest. The important part is the commands themselves, of which there can be many per file. So, let's dig in...
 
 # Environment Variables
-You're going to want to define these in your .bashrc file:
+You're going to want to define these in your .bashrc file. The installer prints the exact lines for you at the end (and offers to add them itself):
 
-* USERSRC - Set this to the directory that this repo is cloned into
-* USERLIB - Set this to: '$USERSRC/lib'
-* USERENV - Set this to: '$USERSRC/env'
-* USERBIN - Set this to: '$(readlink ~/bin)'
-* USERDATA - This is where your config files will be. Can be anywhere except in the directory where you cloned this repo. I set mine to: '"$HOME/src/.data'
+* DRB_LIB - The library directory. Default: `/usr/local/lib`
+* DRB_SRC - Where the scripts are installed. Default: `/usr/local/src`
+* DRB_ENV - The environment scripts. Default: `/usr/local/env`
+* DRB_BIN - Where the command symlinks go. Default: `/usr/local/bin`
+* DRB_DATA - This is where your config files will be. Default: `~/.DrBash`
+* DRB_EDITION - `Full` or `Lite`. Set to `Full` to have `drbash.sh` load the media libraries too.
 
-These are for the media management sub-project. You can define these in '$USERDATA/media-scripts.conf'
+Much of the code assumes these are set, so do set them.
 
-* MEDIADATA - (optional) The location of media-scripts.conf. If not set, USERDATA will be used instead. [don't bother setting this]
-* MEDIAREPO - This is your main media repository. Should be '~/media' or '~/movies' or whatever.
-* MEDIAEXTS - (optional) File extensions that should be considered media files. Defaults to 'mp4 avi'.
-* MEDIAUSER - This is only if you decide to use the permnissions script, which you probably won't. 
-* MEDIAGROUP - This and the previous variable are what the permissions script will set your files to.
+The full edition's installer also gives you these two for the media management sub-project:
+
+* DRB_MEDIA_LIB - The location of the media libraries (`media.lib/`). The media scripts load their libraries from here. Default: `/usr/local/src/media.lib`
+* DRB_MEDIA_REPO - Your main media repository. The installer asks you for this one.
+
+The media settings can also go in `$DRB_DATA/media-scripts.conf`. Each one is optional and has a default:
+
+* DRB_MEDIA_REPO - This is your main media repository. Default: `~/Videos`
+* DRB_MEDIA_STAGING - Where new media lands before it's processed. Default: `<repo>/Staging`
+* DRB_MEDIA_EXTS - File extensions that should be considered media files. Default: `mp4 avi`
+* DRB_MEDIA_PLAYLISTS - Where playlists are saved. Default: `~/Videos/Playlists`
+* DRB_MEDIA_MAP - Maps local paths to the paths your client machines use, for playlists.
+* DRB_MEDIA_COMPACT, DRB_MEDIA_REPOSEARCH - Behavior toggles (true/false). Default: `true`
+* DRB_MEDIA_USER, DRB_MEDIA_GROUP - This is only if you decide to use the permissions script (setperms), which you probably won't. Defaults: you and `users`.
 
 # Configuration Files
-It is only necessary to create these if you want to use the media-related scripts. Even then, all but media-scripts.conf are optional. These are located in '$USERDATA':
+These are located in `$DRB_DATA`. You can open any of them in your editor with `drbashctl`.
 
-* media-scripts.conf - (sourced) An attempt to centralize what config can be centralized among the media scripts. Currently, it's just the collection of environment variables mentioned above.
+* global.conf - (sourced) Global Dr. Bash settings. This one is required, even if it's empty.
+
+The rest are only necessary if you want to use the media-related scripts. Even then, all but media-scripts.conf are optional.
+
+
+* media-scripts.conf - (sourced) An attempt to centralize what config can be centralized among the media scripts. Currently, it's just the collection of DRB_MEDIA_* settings mentioned above.
 * media-fixtags-tagfixes.shdata - (parsed) The contents of an associative array containing regular expressions as keys and literal strings as values. Normal Bash syntax, but only the part that would normally follow after the equals sign in such an array declaration. Used to correct manual entry errors in media file tags.
 * media-fixtitle-abbr.shdata - (parsed) This is just a list (one per line) of abbreviations or anything else that you want to always be in upper case in media file names.
 * media-fixtitle-delete.shdata - (parsed) This is a list of regular expressions (one per line) that if matched against a filename will indicate that it should be deleted. Examples include stuff like '.crdownload', '.part', etc. 
 * media-fixtitle-filler.shdata - (parsed) This is basically the opposite of media-fixtitle-abbr.shdata. Anything you want to always be in lowercase gets listed here. These are usually filler words like "a", "in", "the", etc. Note: This does not apply to the first word in a title.
 * media-fixtitle-patterns.shdata - (parsed) This is a list of regular expressions (one per line) that will be removed from media filenames. This is different from delete that deletes all files with names matching the pattern. Instead this matches and removes substrings from titles.
-* setperms.conf - (sourced) Sets a few environment variables used by the setperms.sh script that you won't use, so don't worry about it.
 
 # Functional Tests
-They exist! But you'll be shocked to learn that the code coverage is pitiful and really the only file with anything resembling comprehensive coverave is `lib/logger.sh`. It's tests are located in `lib/logger.tests.sh`. To run the tests, just execute the script.
+They exist! There's a suite for each of the core libraries in `lib/test.*.sh` (arrays, cli, config, datatypes, logging, run, and string), and GitHub Actions runs all of them on every push. Code coverage is still far from comprehensive, but every suite actually fails when it's supposed to now.
+
+To run one, change to `lib/` and execute it:
+
+```
+cd lib
+DRB_LIB=. ./test.logging.sh
+```
+
+The shared assertion helpers (`AssertEqual`, `AssertFail`, etc.) live in `lib/test.sh`.
 There needs to be more of that sort of thing going on...
 
 # FAQ
