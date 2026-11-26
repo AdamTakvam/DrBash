@@ -90,6 +90,27 @@ ShowSalutation() {
   fi
 }
 
+# Creates the global configuration file, unless there already is one.
+InstallGlobalConfig() {
+  local config_file="${DRB_DATA%/}/global.conf"
+  [[ -e "$config_file" ]] && return 0
+
+  cat > "$config_file" <<'CONF'
+# Dr. Bash global configuration. This file is sourced, so it's plain Bash.
+# View or change a setting with: drbashctl global KEY [VALUE]
+# Booleans accept true/false, yes/no, or 1/0 (any case).
+
+# Colored text in log messages
+DRB_LOG_COLOR=yes
+
+# Timestamp on each log message
+DRB_LOG_TIMESTAMPS=no
+
+# Log level label (e.g. ERROR) on each log message
+DRB_LOG_LABELS=no
+CONF
+}
+
 InstallManpages() {
   local MAN_REPO="/usr/local/share/man/man1"
   sudo mkdir -p "$MAN_REPO"
@@ -136,6 +157,7 @@ DoInstall() {
   fi
 
   DoInstallCommon
+  InstallGlobalConfig
 
   FullInstall && cd full || cd lite 
   sudo cp -r lib/* "$DRB_LIB"

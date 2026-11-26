@@ -257,7 +257,12 @@ The media settings can also go in `$DRB_DATA/media-scripts.conf`. Each one is op
 # Configuration Files
 These are located in `$DRB_DATA`. You can open any of them in your editor with `drbashctl`.
 
-* global.conf - (sourced) Global Dr. Bash settings. This one is required, even if it's empty.
+* global.conf - (sourced) Global Dr. Bash settings. This one is required, even if it's empty. The installer creates it (but never overwrites yours) with these settings:
+  * DRB_LOG_COLOR - Colored text in log messages. Installed as: `yes`
+  * DRB_LOG_TIMESTAMPS - A timestamp on each log message. Installed as: `no`
+  * DRB_LOG_LABELS - The log level (e.g. ERROR) on each log message. Installed as: `no`
+
+  They take true/false, yes/no, or 1/0 in any case. Heads up: the logging library doesn't read them yet.
 
 The rest are only necessary if you want to use the media-related scripts. Even then, all but media-scripts.conf are optional.
 
