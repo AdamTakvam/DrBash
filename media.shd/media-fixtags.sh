@@ -355,7 +355,7 @@ FixTags() {
 
       # At long last... DO SOMETHING!
       Run mv "$filename" "$newFilename"
-      [ $? == 0 ] && (( renameCount++ ))
+      [ $? == 0 ] && (( ++renameCount ))   # Pre-increment: (( 0 )) counts as failure
     fi
   fi
 }
