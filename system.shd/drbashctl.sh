@@ -41,8 +41,7 @@ Help() {
   \t\t- Recommended: Only one match/replace pair per line. Just don't forget the backslashes at the end of lines!"
   Log
   LogHeader "Return Values"
-  LogTable "\t-1\tOperation neither succeeded nor failed because you requested a change to a state that the system was already in.
-  \t0\tOperation completed successfully.
+  LogTable "\t0\tOperation completed successfully.
   \t1\tThe specified MODULE does not exist.
   \t2\tA file access issue or pathing misconfiguration prevented access to config files.
   \t3\tThe specified KEY does not exist. This tool cannot be used to add new configuration keys.
@@ -145,4 +144,5 @@ AccessConfig() {
   DoConfigOperation "$@"
 }
 
-IsSourced || AccessConfig "$@"
+# "|| exit" passes the return code on without setting off the ERR trap from diagnostics.sh
+IsSourced || { AccessConfig "$@" || exit $?; }
