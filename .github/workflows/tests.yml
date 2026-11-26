@@ -23,3 +23,13 @@ jobs:
 
       - name: Run ${{ matrix.suite }} tests
         run: bash ./test.${{ matrix.suite }}.sh
+
+  test-media:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # The suite sets its own DRB_* paths. media-fixtags installs exiftool itself (Require).
+      - name: Run media script tests
+        run: bash media.lib/test.media.sh

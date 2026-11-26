@@ -284,6 +284,14 @@ cd lib
 DRB_LIB=. ./test.logging.sh
 ```
 
+The media scripts have their own suite, `media.lib/test.media.sh`, which CI also runs. It covers media-fixtags, media-fixtitle, and the media data files the installer creates by running the real scripts against throwaway files. It sets up its own paths, so you can run it from anywhere:
+
+```
+bash media.lib/test.media.sh
+```
+
+Heads up: media-fixtags will install exiftool if you don't have it.
+
 The shared assertion helpers (`AssertEqual`, `AssertFail`, etc.) live in `lib/test.sh`.
 There needs to be more of that sort of thing going on...
 
