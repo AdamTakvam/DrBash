@@ -81,7 +81,7 @@ ConfigGet_MEDIA_MAP() {
 
 # Set the drive mapping value (temporary)
 ConfigSet_MEDIA_MAP() {
-  ConfigSet DRB_MEDIA_MAP "$1"
+  ConfigSet TEMP DRB_MEDIA_MAP "$1"
 }
 
 # The media playlists save directory
@@ -91,7 +91,7 @@ ConfigGet_MEDIA_PLAYLISTS() {
 
 # Set the playlist save directory (temporary)
 ConfigSet_MEDIA_PLAYLISTS() {
-  ConfigSet DRB_MEDIA_PLAYLISTS "$1"
+  ConfigSet TEMP DRB_MEDIA_PLAYLISTS "$1"
 }
 
 # --------------- Special Config Files -----------------------
