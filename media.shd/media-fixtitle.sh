@@ -189,7 +189,7 @@ NormalizeTitle() {
 
   LogDebugError -n "d " 
   
-  # Capitalize the first letter of evey word
+  # Capitalize the first letter of every word
   #   For some obnoxious reason, \b thinks that apostrophes are not a part of words and underscores are!
   #   So the second sed statement is a fix for that bug.
   newTitle="$(echo "$newTitle" | sed -E 's/\b(.)/\u\1/g' | sed -E "s/'(.)/'\l\1/g")"
