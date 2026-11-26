@@ -463,7 +463,7 @@ FixTitle() {
 
       # At long last... DO SOMETHING!
       Run mv "$filename" "$newFilename"
-      [ $? == 0 ] && (( renameCount++ ))
+      [ $? == 0 ] && (( ++renameCount ))   # Pre-increment: (( 0 )) counts as failure
     fi
   fi
 }
@@ -485,7 +485,7 @@ DeleteFiles() {
         
       Journal "$fileOpText" 
       Run rm "$file"
-      [ $? == 0 ] && (( deleteCount++ ))
+      [ $? == 0 ] && (( ++deleteCount ))
     fi
   done
 }
