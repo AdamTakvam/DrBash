@@ -145,6 +145,16 @@ ConfigFile_DELETE() {
   [[ -f "$FILE_DELETE" ]] || { LogError "Configuration file not found: $FILE_DELETE"; return 1; }
   [[ -r "$FILE_DELETE" ]] || { LogError "Configuration file cannot be read: $FILE_DELETE"; return 2; }
   ReadDataFile _out "$FILE_DELETE"
+
+  # A pattern that matches an empty string (e.g. "()" or ".*") matches every file name. Drop it.
+  local i
+  for i in "${!_out[@]}"; do
+    if grep -Eq -- "${_out[$i]}" <<< ""; then
+      LogError "Ignoring deletion pattern that would match every file: ${_out[$i]}"
+      unset "_out[$i]"
+    fi
+  done
+  _out=("${_out[@]}")
 }
 
 # Dictionary of patterns of often mistaken tags to their proper tag name

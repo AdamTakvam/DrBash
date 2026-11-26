@@ -112,10 +112,25 @@ PrintHelp () {
   Log
 }
 
+# Checks whether a file is a duplicate or other junk, per the deletion patterns (DELETEPATTERNS)
+# +$1 = file name
+# -retVal = 0 if the file name, with or without its extension, matches a deletion pattern
+MatchesDeletePattern() {
+  local file="$1"
+  local filename="${file%.*}"
+  local dPattern
+
+  for dPattern in "${DELETEPATTERNS[@]}"; do
+    if grep -Eiq -- "$dPattern" <<< "$file" || grep -Eiq -- "$dPattern" <<< "$filename"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # Applies static normalization rules to title
 # +$1 = file name
 # -newFilename = Normalized filename
-# -deleteFile = Set if file is a duplicate (no false positives, many false negatives)
 NormalizeTitle() {
   local file="$1"
   
@@ -123,16 +138,6 @@ NormalizeTitle() {
   IFS='.' fileParts=($file)
   local -l fileExt="${fileParts[-1]}"
   local filename="${file%.$fileExt}"
-  
-  # Check whether this file is marked as a duplicate or other junk
-  for dPattern in "${DELETEPATTERNS[@]}"; do
-    if [ "$(echo "$file" | grep -Ei "$dPattern")" ] || \
-       [ "$(echo "$filename" | grep -Ei "$dPattern")" ]; then
-           LogVerboseError "$(ColorText LRED "Flagging $file for deletion.")"
-      deleteFiles+=("$file")
-      return 1
-    fi
-  done
 
   # Separate the media name from the tags
   IFS='[' fileParts=($filename) 
@@ -414,10 +419,18 @@ FixTitle() {
   # There are some files we need to ignore
   [ -e "$filename" ] || return  # Hack around bash bugs
   [ ${#filename} -lt 5 ] && return
-  [[ "$filename" =~ .$LastRunFileExt$ ]] && continue;
+  [[ "$filename" =~ .$LastRunFileExt$ ]] && return 0
+
+  # Junk files are queued for deletion at the end of the run instead of renamed.
+  # This has to happen here: NormalizeTitle() runs in a subshell, where adding to deleteFiles would be lost.
+  if MatchesDeletePattern "$filename"; then
+    LogVerboseError "$(ColorText LRED "Flagging $filename for deletion.")"
+    deleteFiles+=("$filename")
+    return 0
+  fi
 
   newFilename="$(NormalizeTitle "$filename")"
-  [ $? == 0 ] || continue
+  [ $? == 0 ] || return 0     # Skip it; NormalizeTitle() already said why
 
   # Sanity check
   [ -z "$newFilename" ] && { LogError "Internal Error: NormalizeTitle() returned a null filename!"; exit 99; }
