@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 source "${DRB_LIB:-/usr/local/lib}/drbash.sh"
 declare -r APPNAME="sensors-color"
 
