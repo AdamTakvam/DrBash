@@ -53,7 +53,7 @@ PrintHelp () {
   Log
   Log "$(Header "Removal Expressions:") (source: $FILE_PATTERNS):"
   if [ -r "$FILE_PATTERNS" ]; then
-    readarray -t patterns < "$FILE_PATTERNS"
+    ReadDataFile patterns "$FILE_PATTERNS"
     Log "\t(Any text matching the following expresions will be removed from the title portion of the file name)"
     for p in "${patterns[@]}"; do
       # Log -n "\t"
@@ -67,7 +67,7 @@ PrintHelp () {
 
   Log "$(Header "Abbreviations:") (source: $FILE_ABBR):"
   if [ -r "$FILE_ABBR" ]; then
-    readarray -t abbr < "$FILE_ABBR"
+    ReadDataFile abbr "$FILE_ABBR"
     Log "\t(To be capitalized exactly as shown)"
     Log "\t> $(ColorText LBLUE "${abbr[*]}")\n"
     unset abbr
@@ -77,7 +77,7 @@ PrintHelp () {
   
   Log "$(Header "Filler Words:") (source: $FILE_FILLER):"
   if [ -r "$FILE_FILLER" ]; then
-    readarray -t filler < "$FILE_FILLER"
+    ReadDataFile filler "$FILE_FILLER"
     Log "\t(These words will be set to lower-case)"
     Log "\t> $(ColorText LPURPLE "${filler[*]}")\n"
     unset filler
@@ -89,7 +89,7 @@ PrintHelp () {
   Log "\tAt the end of the run, you will prompted to confirm whether you want to delete certain temporary or possibly duplicate files in the directory. 
   \tAll files matching any of these patterns will be marked for deletion:"
   if [ -r "$FILE_DELETE" ]; then
-    readarray -t deletes < "$FILE_DELETE"
+    ReadDataFile deletes "$FILE_DELETE"
     for d in "${deletes[@]}"; do
       Log -n "\t"
       LogLiteral "> $d"

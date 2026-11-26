@@ -102,14 +102,22 @@ declare -rg FILE_PATTERNS="${DRB_DATA:-.}/media-fixtitle-patterns.shdata"
 declare -rg FILE_DELETE="${DRB_DATA:-.}/media-fixtitle-delete.shdata"
 declare -rg FILE_TAGS="${DRB_DATA:-.}/media-fixtags-tagfixes.shdata"
 
+# Reads a one-entry-per-line data file into an array, skipping blank lines and # comments
+# + $1 = The name of the array to fill
+# + $2 = The data file
+ReadDataFile() {
+  local -n _lines="$1"
+  readarray -t _lines < <(grep -Ev '^[[:space:]]*(#|$)' "$2")
+}
+
 # Common capitalized initialisms used in media filenames
-# Data files contain only one ewntry per line
+# Data files contain only one entry per line; lines starting with # are comments
 # Abbreviations should be capitalized exactly how you want to see them (e.g TX for Texas)
 ConfigFile_ABBR() {
   local -n _out="$1"
   [[ -f "$FILE_ABBR" ]] || { LogError "Configuration file not found: $FILE_ABBR"; return 1; }
   [[ -r "$FILE_ABBR" ]] || { LogError "Configuration file cannot be read: $FILE_ABBR"; return 2; }
-  readarray -t _out < "$FILE_ABBR"
+  ReadDataFile _out "$FILE_ABBR"
 }
 
 # Filler words are words like: a, in, to, it
@@ -118,7 +126,7 @@ ConfigFile_FILLER() {
   local -n _out="$1"
   [[ -f "$FILE_FILLER" ]] || { LogError "Configuration file not found: $FILE_FILLER"; return 1; }
   [[ -r "$FILE_FILLER" ]] || { LogError "Configuration file cannot be read: $FILE_FILLER"; return 2; }
-  readarray -t _out < "$FILE_FILLER"
+  ReadDataFile _out "$FILE_FILLER"
 }
 
 # Trim patterns are extended regular expressions. All text matching any of these patters is removed from the title only (not tags)
@@ -127,7 +135,7 @@ ConfigFile_PATTERNS() {
   local -n _out="$1"
   [[ -f "$FILE_PATTERNS" ]] || { LogError "Configuration file not found: $FILE_PATTERNS"; return 1; }
   [[ -r "$FILE_PATTERNS" ]] || { LogError "Configuration file cannot be read: $FILE_PATTERNS"; return 2; }
-  readarray -t _out < "$FILE_PATTERNS" 
+  ReadDataFile _out "$FILE_PATTERNS"
 }
 
 # DELETEPATTERNS is a collection of regexes run (grep'd) on the full filename.
@@ -136,12 +144,13 @@ ConfigFile_DELETE() {
   local -n _out="$1"
   [[ -f "$FILE_DELETE" ]] || { LogError "Configuration file not found: $FILE_DELETE"; return 1; }
   [[ -r "$FILE_DELETE" ]] || { LogError "Configuration file cannot be read: $FILE_DELETE"; return 2; }
-  readarray -t _out < "$FILE_DELETE"
+  ReadDataFile _out "$FILE_DELETE"
 }
 
 # Dictionary of patterns of often mistaken tags to their proper tag name
 # + $1 = The name of an associative array (declare -A) to load the tag fixes into
 # The file holds the right-hand side of an associative array declaration: ([regex]='replacement' ...)
+#   Lines starting with # are comments.
 ConfigFile_TAGFIXES() {
   local -n _out="$1"
 
@@ -153,7 +162,7 @@ ConfigFile_TAGFIXES() {
   # Load the tagfixes data file.
   # eval is what turns the text into array entries; a plain assignment would store the
   #   whole file as a single value under key 0.
-  eval "_out=$(cat "$FILE_TAGS")" || { LogError "Tag Fixes file is not a valid associative array: $FILE_TAGS"; return 1; }
+  eval "_out=$(grep -Ev '^[[:space:]]*#' "$FILE_TAGS")" || { LogError "Tag Fixes file is not a valid associative array: $FILE_TAGS"; return 1; }
   LogVerbose "Tag Fixes: ${#_out[@]}"
 }
 

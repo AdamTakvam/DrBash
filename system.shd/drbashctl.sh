@@ -85,10 +85,13 @@ DoConfigOperation() {
       value="$1" 
       if [[ -n "$value" ]]; then
         # Read the file into an array, add the new item, sort the array, print it to the console, and rewrite the file
-        Split list $'\n' "$(cat "$configFile")"                   # Read the file contents into an array/list
+        # Comment lines (#) stay at the top, unsorted
+        local header="$(grep -E '^[[:space:]]*#' "$configFile")"
+        ReadDataFile list "$configFile"                           # Read the entries (no comments) into an array/list
         if ! ArrayContains list -v="$value" -Iq; then             # Perform a case-sensitive literal-value search
           list+=("$value")                                        # Add the new entry to the list
-          printf "%s\n" "${list[@]}" | sort | tee "$configFile"   # Resort the list, save it, and display it
+          { [[ -n "$header" ]] && printf "%s\n" "$header"        # Resort the list, save it, and display it
+            printf "%s\n" "${list[@]}" | sort; } | tee "$configFile"
         else
           Log "The $module module already contains an entry for $value."
         fi
