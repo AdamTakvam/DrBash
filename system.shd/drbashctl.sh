@@ -74,6 +74,13 @@ DoConfigOperation() {
         ConfigGet "$key"
       else
         ConfigSet "$key" "$value"
+        local -i rc=$?
+        case $rc in
+          2) LogError "Couldn't read or write the configuration file: $configFile" ;;
+          3) LogError "Unknown setting: $key. This tool can't add new configuration keys." ;;
+          4) LogError "$key is read-only. Set it in your ~/.bashrc file instead." ;;
+        esac
+        return $rc
       fi ;;
     1)
       value="$1" 

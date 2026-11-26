@@ -112,4 +112,50 @@ ConfigEvalBool maybe 2>/dev/null; AssertEqual 2 $?
 SetTestName "ConfigEvalBool prints nothing"
 AssertEqual "" "$(ConfigEvalBool yes 2>&1)"
 
+# ---------- ConfigSet ----------
+
+printf '%s\n' 'DRB_LOG_COLOR=yes' 'DRB_LOG_TIMESTAMPS=no' > "$GLOBAL_CONFIG_FILE"
+source "$GLOBAL_CONFIG_FILE"
+
+SetTestName "ConfigSet replaces an existing setting"
+ConfigSet LOG_COLOR no
+AssertEqual "0 DRB_LOG_COLOR=no" "$? $(grep '^DRB_LOG_COLOR=' "$GLOBAL_CONFIG_FILE")"
+
+SetTestName "ConfigSet updates the variable"
+AssertEqual no "$(ConfigGet LOG_COLOR)"
+
+SetTestName "ConfigSet appends a known setting that's missing from the file"
+ConfigSet DRB_LOG_LABELS No
+AssertEqual "0 DRB_LOG_LABELS=No" "$? $(grep '^DRB_LOG_LABELS=' "$GLOBAL_CONFIG_FILE")"
+
+SetTestName "ConfigSet value with spaces and sed metacharacters survives a round trip"
+ConfigSet LOG_TIMESTAMPS 'a b|c&d\e'
+( source "$GLOBAL_CONFIG_FILE"; printf '%s' "$DRB_LOG_TIMESTAMPS" ) > "$DRB_DATA/out"
+AssertEqual 'a b|c&d\e' "$(cat "$DRB_DATA/out")"
+
+SetTestName "ConfigSet unknown setting returns 3"
+ConfigSet LOG_BOGUS 1
+AssertEqual "3 " "$? ${DRB_LOG_BOGUS}"
+
+SetTestName "ConfigSet read-only setting returns 4 and leaves it alone"
+_lib_before="$DRB_LIB"
+ConfigSet LIB /nowhere
+AssertEqual "4 $_lib_before" "$? $DRB_LIB"
+
+SetTestName "ConfigSet unwritable file returns 2"
+chmod a-w "$GLOBAL_CONFIG_FILE"
+ConfigSet LOG_COLOR yes 2>/dev/null
+_rc=$?
+chmod u+w "$GLOBAL_CONFIG_FILE"
+[[ $EUID == 0 ]] && _rc=2    # root can write anyway
+AssertEqual 2 $_rc
+
+SetTestName "ConfigSet TEMP doesn't touch the file"
+ConfigSet TEMP LOG_COLOR maybe
+AssertEqual "0 maybe DRB_LOG_COLOR=no" "$? $DRB_LOG_COLOR $(grep '^DRB_LOG_COLOR=' "$GLOBAL_CONFIG_FILE")"
+
+SetTestName "ConfigSet TEMP works on read-only settings"
+ConfigSet TEMP BIN /tmp/bin
+AssertEqual "0 /tmp/bin" "$? $DRB_BIN"
+
 exit $fail

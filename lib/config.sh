@@ -131,14 +131,14 @@ _GetConfigFile() {
   #   So as long as media-config.sh is sourced before this function is called, we're golden, dawg!
   local _var_name="$1"
   case "$_var_name" in
+    DRB_DATA | DRB_SRC | DRB_LIB | DRB_ENV | DRB_BIN | DRB_EDITION | DRB_MEDIA_LIB)
+      return 2 ;;
     DRB_LOG*)
       GlobalConfigFile ;;
     DRB_MEDIA*)
       MediaConfigFile ;;
     DRB_*.*)
       return 1 ;;
-    DRB_*)
-      return 2 ;;
     *)
       return 3 ;;
   esac
@@ -174,11 +174,16 @@ ConfigGet() {
 #           TEMP = Value should only persist for as long as the current script does
 # + $2 = The name of the configuration setting
 # + $3 = The new value of the configuration setting
-# - retVal = Success or failure to persist the new configuration value
-# Notes: 
-# 1. This method does not validate the value you're trying to set, 
+# - retVal = 0 if the value was set (and saved, unless TEMP)
+#            1 if the name or value is missing
+#            2 if the configuration file can't be read or written
+#            3 if the setting doesn't exist (this can't be used to invent new settings)
+#            4 if the setting is read-only (e.g. DRB_LIB; set those in ~/.bashrc instead)
+# Notes:
+# 1. This method does not validate the value you're trying to set,
 #       so be sure that you're setting a value that makes sense!
 # 2. If you forget the DRB_ prefix, we got u dawg!
+# 3. A known setting (one with a default value) that's missing from the file gets appended to it.
 ConfigSet() {
   [[ -z "$2" ]] && return 1
   [[ "$1" == TEMP ]] && { local _temp=1; shift; }
@@ -186,20 +191,43 @@ ConfigSet() {
   local _var_name="$1"
   local _var_value="$2"
 
-  [[ "$_var_name" != DRB_* ]] && _var_name="DRB_${_var_name}" 
+  [[ "$_var_name" != DRB_* ]] && _var_name="DRB_${_var_name}"
+
+  if [[ ! "$_temp" ]]; then
+    # Find the file before touching the variable so a refused setting stays unchanged
+    local _config_file
+    _config_file="$(_GetConfigFile "$_var_name")"
+    case $? in
+      0) ;;
+      2) return 4 ;;      # Top-level setting (e.g. DRB_LIB): read-only
+      *) return 3 ;;      # Not a setting we know where to save
+    esac
+    [[ -r "$_config_file" && -w "$_config_file" ]] || return 2
+
+    local _in_file=
+    grep -q "^${_var_name}=" "$_config_file" && _in_file=1
+    [[ "$_in_file" ]] || VariableExists "_${_var_name#DRB_}_DEF" || return 3
+  fi
 
   local -n _var="$_var_name"
   local _old_value="$_var"
   _var="$_var_value"
 
-  if [[ ! "$_temp" ]] && [[ "$_old_value" != "$_var_value" ]]; then
-    # Edit the config file to make the setting change permanent
-    local _config_file="$(_GetConfigFile "$_var_name")"
-    [[ "$?" == 0 ]] || return $?
-    sed -Ei.bak "s|^$_var_name=.*$|$_var_name=$_var_value/" "${_config_file}"
+  [[ "$_temp" ]] && return 0
+  [[ "$_in_file" && "$_old_value" == "$_var_value" ]] && return 0
+
+  # Edit the config file to make the setting change permanent.
+  # %q quotes the value so that sourcing the file gives back exactly what was set (spaces and all).
+  local _line
+  printf -v _line '%s=%q' "$_var_name" "$_var_value"
+  if [[ "$_in_file" ]]; then
+    local _sed_line="${_line//\\/\\\\}"     # Escape what's special in a sed replacement: \ & |
+    _sed_line="${_sed_line//&/\\&}"
+    _sed_line="${_sed_line//|/\\|}"
+    sed -i.bak "s|^${_var_name}=.*$|${_sed_line}|" "$_config_file" || return 2
+  else
+    printf '%s\n' "$_line" >> "$_config_file" || return 2
   fi
-  
-  return $?
 }
 
 # User configuration files
