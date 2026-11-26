@@ -268,10 +268,10 @@ The rest are only necessary if you want to use the media-related scripts. Even t
 
 
 * media-scripts.conf - (sourced) An attempt to centralize what config can be centralized among the media scripts. Currently, it's just the collection of DRB_MEDIA_* settings mentioned above.
-* media-fixtags-tagfixes.shdata - (parsed) The contents of an associative array containing regular expressions as keys and literal strings as values. Normal Bash syntax, but only the part that would normally follow after the equals sign in such an array declaration. Used to correct manual entry errors in media file tags.
-* media-fixtitle-abbr.shdata - (parsed) This is just a list (one per line) of abbreviations or anything else that you want to always be in upper case in media file names.
+* media-fixtags-tagfixes.shdata - (parsed) The contents of an associative array containing regular expressions as keys and literal strings as values. Normal Bash syntax, but only the part that would normally follow after the equals sign in such an array declaration. Used to correct manual entry errors in media file tags. The full edition's installer creates it with a one-entry example, `([favorite]='fav')`, but never overwrites yours.
+* media-fixtitle-abbr.shdata - (parsed) This is just a list (one per line) of abbreviations or anything else that you want to always be in upper case in media file names. The full edition's installer creates it with a starter list (HD, DVD, PG-13, etc.) but never overwrites yours.
 * media-fixtitle-delete.shdata - (parsed) This is a list of regular expressions (one per line) that if matched against a filename will indicate that it should be deleted. Examples include stuff like '.crdownload', '.part', etc. 
-* media-fixtitle-filler.shdata - (parsed) This is basically the opposite of media-fixtitle-abbr.shdata. Anything you want to always be in lowercase gets listed here. These are usually filler words like "a", "in", "the", etc. Note: This does not apply to the first word in a title.
+* media-fixtitle-filler.shdata - (parsed) This is basically the opposite of media-fixtitle-abbr.shdata. Anything you want to always be in lowercase gets listed here. These are usually filler words like "a", "in", "the", etc. Note: This does not apply to the first word in a title. The full edition's installer creates it with a starter list of articles, conjunctions, and short prepositions (but never overwrites yours).
 * media-fixtitle-patterns.shdata - (parsed) This is a list of regular expressions (one per line) that will be removed from media filenames. This is different from delete that deletes all files with names matching the pattern. Instead this matches and removes substrings from titles.
 
 # Functional Tests

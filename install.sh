@@ -111,6 +111,19 @@ DRB_LOG_LABELS=no
 CONF
 }
 
+# Creates the media module's data files, skipping any that already exist.
+# The word lists are one word per line: media-config.sh reads them with readarray.
+InstallMediaConfig() {
+  local filler_file="${DRB_DATA%/}/media-fixtitle-filler.shdata"   # Words kept lowercase
+  local abbr_file="${DRB_DATA%/}/media-fixtitle-abbr.shdata"       # Words kept uppercase
+  local tagfix_file="${DRB_DATA%/}/media-fixtags-tagfixes.shdata"  # Tag renames: ([regex]='replacement' ...)
+
+  [[ -e "$filler_file" ]] || printf '%s\n' a an the and but or nor for so yet as at by in of on per to up via with from into onto upon over off out > "$filler_file"
+  [[ -e "$abbr_file" ]] || printf '%s\n' HD VHS DVD HD-DVD VOD PG PG-13 XXX > "$abbr_file"
+  # There's no sensible default for tags (they're whatever you made up), so this is just an example of the syntax
+  [[ -e "$tagfix_file" ]] || printf '%s\n' "([favorite]='fav')" > "$tagfix_file"
+}
+
 InstallManpages() {
   local MAN_REPO="/usr/local/share/man/man1"
   sudo mkdir -p "$MAN_REPO"
@@ -158,6 +171,7 @@ DoInstall() {
 
   DoInstallCommon
   InstallGlobalConfig
+  FullInstall && InstallMediaConfig
 
   FullInstall && cd full || cd lite 
   sudo cp -r lib/* "$DRB_LIB"
