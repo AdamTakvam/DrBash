@@ -231,7 +231,7 @@ ParseCLI() {
 
 ReadConfig() {
   # Load the tagfixes data file
-  declare -A TAGFIXES
+  declare -gA TAGFIXES    # -g: NormalizeTags() uses it after this function returns
   ConfigFile_TAGFIXES TAGFIXES
   LogVerbose "TagFixes: ${#TAGFIXES[@]}"      
 }

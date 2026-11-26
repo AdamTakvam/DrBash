@@ -140,17 +140,21 @@ ConfigFile_DELETE() {
 }
 
 # Dictionary of patterns of often mistaken tags to their proper tag name
+# + $1 = The name of an associative array (declare -A) to load the tag fixes into
+# The file holds the right-hand side of an associative array declaration: ([regex]='replacement' ...)
 ConfigFile_TAGFIXES() {
   local -n _out="$1"
 
-  # Load the tagfixes data file
-  if [ -f "$FILE_TAGS" ]; then
-    _out="$(cat "$FILE_TAGS")"
-    LogVerbose "Tag Fixes: ${#_out[@]}"
-  else
+  if [ ! -f "$FILE_TAGS" ]; then
     LogVerbose "Tag Fixes file does not exist. Creating default..."
-    printf "%b\n" "( [\"movei\"]=\"movie\" )" > "$FILE_TAGS"
+    printf '%s\n' "([favorite]='fav')" > "$FILE_TAGS"
   fi
+
+  # Load the tagfixes data file.
+  # eval is what turns the text into array entries; a plain assignment would store the
+  #   whole file as a single value under key 0.
+  eval "_out=$(cat "$FILE_TAGS")" || { LogError "Tag Fixes file is not a valid associative array: $FILE_TAGS"; return 1; }
+  LogVerbose "Tag Fixes: ${#_out[@]}"
 }
 
 # ---------------------- Initialize ---------------------------
