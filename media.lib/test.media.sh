@@ -25,9 +25,6 @@ touch "$DRB_DATA/global.conf" "$DRB_DATA/media-scripts.conf"
 # Load the installer's function without running the installer
 eval "$(sed -n '/^InstallMediaConfig()/,/^}/p' "$REPO/install.sh")"
 
-# Removal and deletion patterns: none, so they can't affect the results
-touch "$DRB_DATA/media-fixtitle-patterns.shdata" "$DRB_DATA/media-fixtitle-delete.shdata"
-
 TAGFIXES_FILE="$DRB_DATA/media-fixtags-tagfixes.shdata"
 
 # Creates a fresh, empty media directory, makes it current, and touches the files named
@@ -54,16 +51,22 @@ NormalizeTitle() {
 
 InstallMediaConfig
 
-SetTestName "Installer creates the filler word list, one word per line"
+SetTestName "Installer creates the filler word list: a comment, then one word per line"
 readarray -t words < "$DRB_DATA/media-fixtitle-filler.shdata"
-AssertEqual "28 a out" "${#words[@]} ${words[0]} ${words[-1]}"
+AssertEqual "29|# Set of words that should appear in lowercase in media titles.|a|out" "${#words[@]}|${words[0]}|${words[1]}|${words[-1]}"
 
-SetTestName "Installer creates the abbreviation list, one word per line"
+SetTestName "Installer creates the abbreviation list: a comment, then one word per line"
 readarray -t words < "$DRB_DATA/media-fixtitle-abbr.shdata"
-AssertEqual "HD VHS DVD HD-DVD VOD PG PG-13 XXX" "${words[*]}"
+AssertEqual "# Set of abbreviations or other words that should appear in all caps in media titles.|HD VHS DVD HD-DVD VOD PG PG-13 XXX" "${words[0]}|${words[*]:1}"
 
-SetTestName "Installer creates the tag fixes example"
-AssertEqual "([favorite]='fav')" "$(cat "$TAGFIXES_FILE")"
+SetTestName "Installer creates the removal patterns file: a comment and ()"
+AssertEqual $'# Set of words or regex patterns that will be removed from media titles.\n()' "$(cat "$DRB_DATA/media-fixtitle-patterns.shdata")"
+
+SetTestName "Installer creates the deletion patterns file: a comment, backup files (~), partial downloads (.part)"
+AssertEqual "# Set of words or regex patterns that if matched in a media file's title will cause it to be deleted. This is usually only used for backup and temporary files."$'\n~$\n\\.part$' "$(cat "$DRB_DATA/media-fixtitle-delete.shdata")"
+
+SetTestName "Installer creates the tag fixes example: a comment and one fix"
+AssertEqual $'# Set of replacement patterns used to normalize media tags.\n([favorite]=\'fav\')' "$(cat "$TAGFIXES_FILE")"
 
 SetTestName "Installer doesn't overwrite existing data files"
 echo "mine" > "$DRB_DATA/media-fixtitle-abbr.shdata"
@@ -108,11 +111,11 @@ NewMediaDir "Clip [compilation adam.fav 720p].mp4"
 RunMedia media-fixtags -fl -y "Clip [compilation adam.fav 720p].mp4"
 AssertEqual "0 Clip [comp fav 720p].mp4" "$RC $(ls)"
 
-SetTestName "media-fixtags creates the default tag fixes file when it's missing"
+SetTestName "media-fixtags creates the default tag fixes file when it's missing, same as the installer's"
 rm "$TAGFIXES_FILE"
 NewMediaDir "Movie [favorite 480p].mp4"
 RunMedia media-fixtags -fl -y "Movie [favorite 480p].mp4"
-AssertEqual "([favorite]='fav')" "$(cat "$TAGFIXES_FILE" 2>&1)"
+AssertEqual "$(cat "$TMP/tagfixes.bak")" "$(cat "$TAGFIXES_FILE" 2>&1)"
 
 SetTestName "media-fixtags applies the default it just created"
 AssertEqual "Movie [fav 480p].mp4" "$(ls)"
@@ -153,6 +156,10 @@ AssertEqual "Loud [t 720p].mp4" "$(NormalizeTitle "loud [t 720p].MP4")"
 SetTestName "NormalizeTitle handles a name without tags"
 AssertEqual "No Tags Here.mp4" "$(NormalizeTitle "no tags here.mp4")"
 
+SetTestName "NormalizeTitle ignores the comment lines in the word lists"
+# Every word here is in the abbreviation or filler file's comment line
+AssertEqual "Set All Other Words That Should Appear Media Titles [t 720p].mp4" "$(NormalizeTitle "set all other words that should appear media titles [t 720p].mp4")"
+
 # ---------- media-fixtitle: whole script ----------
 
 SetTestName "media-fixtitle renames a file that needs it and leaves a correct one alone"
@@ -166,9 +173,38 @@ AssertEqual 0 "$RC"
 SetTestName "media-fixtitle doesn't count a successful rename as a failure"
 AssertSubstring "Files failed: 0" "$OUT"
 
+SetTestName "media-fixtitle deletes backup (~) and partial (.part) files and keeps the rest"
+# No input means the deletion prompt takes its default: yes
+NewMediaDir "Keeper [x 720p].mp4" "Keeper [x 720p].mp4~" "Download [x 720p].mp4.part"
+RunMedia media-fixtitle -fl "Keeper [x 720p].mp4" "Keeper [x 720p].mp4~" "Download [x 720p].mp4.part"
+AssertEqual "0 Keeper [x 720p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtitle counts the deletions"
+AssertSubstring "Files deleted: 2" "$OUT"
+
+SetTestName "media-fixtitle ignores a deletion pattern that would match every file"
+cp "$DRB_DATA/media-fixtitle-delete.shdata" "$TMP/delete.bak"
+echo "()" > "$DRB_DATA/media-fixtitle-delete.shdata"
+NewMediaDir "Keeper [x 720p].mp4"
+RunMedia media-fixtitle -fl "Keeper [x 720p].mp4"
+AssertEqual "0 Keeper [x 720p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtitle warns about the ignored pattern"
+AssertSubstring "Ignoring deletion pattern that would match every file: ()" "$OUT"
+cp "$TMP/delete.bak" "$DRB_DATA/media-fixtitle-delete.shdata"
+
 SetTestName "media-fixtitle simulation (-s) doesn't rename"
 NewMediaDir "the lord of the rings [fav 1080p].mp4"
 RunMedia media-fixtitle -s -fl "the lord of the rings [fav 1080p].mp4"
 AssertEqual "the lord of the rings [fav 1080p].mp4" "$(ls)"
+
+# ---------- drbashctl: word lists ----------
+
+SetTestName "drbashctl adds a word to a list and keeps the comment on top"
+cp "$DRB_DATA/media-fixtitle-abbr.shdata" "$TMP/abbr.bak"
+bash "$REPO/system.shd/drbashctl.sh" upper 4K </dev/null >/dev/null 2>&1
+readarray -t words < "$DRB_DATA/media-fixtitle-abbr.shdata"
+AssertEqual "# Set of abbreviations or other words that should appear in all caps in media titles.|4K DVD HD HD-DVD PG PG-13 VHS VOD XXX" "${words[0]}|${words[*]:1}"
+cp "$TMP/abbr.bak" "$DRB_DATA/media-fixtitle-abbr.shdata"
 
 exit $fail

@@ -112,16 +112,34 @@ CONF
 }
 
 # Creates the media module's data files, skipping any that already exist.
-# The word lists are one word per line: media-config.sh reads them with readarray.
+# Line 1 of each is a comment saying what the file is for (the scripts skip # lines).
+# The lists are one entry per line: media-config.sh reads them with ReadDataFile().
 InstallMediaConfig() {
-  local filler_file="${DRB_DATA%/}/media-fixtitle-filler.shdata"   # Words kept lowercase
-  local abbr_file="${DRB_DATA%/}/media-fixtitle-abbr.shdata"       # Words kept uppercase
-  local tagfix_file="${DRB_DATA%/}/media-fixtags-tagfixes.shdata"  # Tag renames: ([regex]='replacement' ...)
+  local data="${DRB_DATA%/}"
 
-  [[ -e "$filler_file" ]] || printf '%s\n' a an the and but or nor for so yet as at by in of on per to up via with from into onto upon over off out > "$filler_file"
-  [[ -e "$abbr_file" ]] || printf '%s\n' HD VHS DVD HD-DVD VOD PG PG-13 XXX > "$abbr_file"
+  [[ -e "$data/media-fixtitle-abbr.shdata" ]] || printf '%s\n' \
+    "# Set of abbreviations or other words that should appear in all caps in media titles." \
+    HD VHS DVD HD-DVD VOD PG PG-13 XXX > "$data/media-fixtitle-abbr.shdata"
+
+  [[ -e "$data/media-fixtitle-filler.shdata" ]] || printf '%s\n' \
+    "# Set of words that should appear in lowercase in media titles." \
+    a an the and but or nor for so yet as at by in of on per to up via with from into onto upon over off out \
+    > "$data/media-fixtitle-filler.shdata"
+
+  [[ -e "$data/media-fixtitle-delete.shdata" ]] || printf '%s\n' \
+    "# Set of words or regex patterns that if matched in a media file's title will cause it to be deleted. This is usually only used for backup and temporary files." \
+    '~$' \
+    '\.part$' \
+    > "$data/media-fixtitle-delete.shdata"
+
+  [[ -e "$data/media-fixtitle-patterns.shdata" ]] || printf '%s\n' \
+    "# Set of words or regex patterns that will be removed from media titles." \
+    "()" > "$data/media-fixtitle-patterns.shdata"
+
   # There's no sensible default for tags (they're whatever you made up), so this is just an example of the syntax
-  [[ -e "$tagfix_file" ]] || printf '%s\n' "([favorite]='fav')" > "$tagfix_file"
+  [[ -e "$data/media-fixtags-tagfixes.shdata" ]] || printf '%s\n' \
+    "# Set of replacement patterns used to normalize media tags." \
+    "([favorite]='fav')" > "$data/media-fixtags-tagfixes.shdata"
 }
 
 InstallManpages() {

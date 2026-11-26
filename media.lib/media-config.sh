@@ -166,7 +166,7 @@ ConfigFile_TAGFIXES() {
 
   if [ ! -f "$FILE_TAGS" ]; then
     LogVerbose "Tag Fixes file does not exist. Creating default..."
-    printf '%s\n' "([favorite]='fav')" > "$FILE_TAGS"
+    printf '%s\n' "# Set of replacement patterns used to normalize media tags." "([favorite]='fav')" > "$FILE_TAGS"
   fi
 
   # Load the tagfixes data file.
