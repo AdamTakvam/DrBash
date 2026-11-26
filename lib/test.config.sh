@@ -94,4 +94,22 @@ TESTVALUE='C:\stupid=//clownpenis/fart'
 _ValidateConfigValue TESTVALUE
 AssertFail $?
 
+# ---------- ConfigEvalBool ----------
+
+for v in true TRUE Yes 1; do
+  SetTestName "ConfigEvalBool '$v' is true"
+  ConfigEvalBool "$v"; AssertEqual 0 $?
+done
+
+for v in false FALSE No 0; do
+  SetTestName "ConfigEvalBool '$v' is false"
+  ConfigEvalBool "$v"; AssertEqual 1 $?
+done
+
+SetTestName "ConfigEvalBool 'maybe' is unknown"
+ConfigEvalBool maybe 2>/dev/null; AssertEqual 2 $?
+
+SetTestName "ConfigEvalBool prints nothing"
+AssertEqual "" "$(ConfigEvalBool yes 2>&1)"
+
 exit $fail

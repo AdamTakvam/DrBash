@@ -144,17 +144,16 @@ _GetConfigFile() {
   esac
 }
 
-# Outputs the appropriate return code based on a boolean interpretation of the value passed in.
+# Interprets the value passed in as a boolean (case-insensitive).
 # + $1 = The value to evaluate
-# - stdout = The return code corredsponding to the value entered
-#     0 = true
-#     1 = false
-#     -1 = unknown
+# - retVal = 0 = true  (true, yes, 1)
+#            1 = false (false, no, 0)
+#            2 = unknown (anything else)
 ConfigEvalBool() {
-  case "$1" in 
-    true | yes | 1) printf 0 ;;
-    false | no | 0) printf 1 ;;
-    *)              printf -1 ;;
+  case "${1,,}" in
+    true | yes | 1) return 0 ;;
+    false | no | 0) return 1 ;;
+    *)              return 2 ;;
   esac
 }
 
