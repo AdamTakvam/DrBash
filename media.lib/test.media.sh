@@ -83,7 +83,7 @@ InstallMediaConfig
 
 SetTestName "media-fixtags applies a tag fix"
 NewMediaDir "Movie [favorite 1080p].mp4"
-RunMedia media-fixtags -fl -y "Movie [favorite 1080p].mp4"
+RunMedia media-fixtags -y "Movie [favorite 1080p].mp4"
 AssertEqual "0 Movie [fav 1080p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtags doesn't report a successful rename as an error"
@@ -94,12 +94,12 @@ AssertSubstring "Files renamed: 1" "$OUT"
 
 SetTestName "media-fixtags leaves tags without a fix alone"
 NewMediaDir "Other [classic 720p].mp4"
-RunMedia media-fixtags -fl -y "Other [classic 720p].mp4"
+RunMedia media-fixtags -y "Other [classic 720p].mp4"
 AssertEqual "0 Other [classic 720p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtags simulation (-s) doesn't rename"
 NewMediaDir "Movie [favorite 1080p].mp4"
-RunMedia media-fixtags -s -fl -y "Movie [favorite 1080p].mp4"
+RunMedia media-fixtags -s -y "Movie [favorite 1080p].mp4"
 AssertEqual "Movie [favorite 1080p].mp4" "$(ls)"
 
 SetTestName "media-fixtags applies several regex tag fixes from a multi-line file"
@@ -111,13 +111,13 @@ cat > "$TAGFIXES_FILE" <<'EOF'
 )
 EOF
 NewMediaDir "Clip [compilation adam.fav 720p].mp4"
-RunMedia media-fixtags -fl -y "Clip [compilation adam.fav 720p].mp4"
+RunMedia media-fixtags -y "Clip [compilation adam.fav 720p].mp4"
 AssertEqual "0 Clip [comp fav 720p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtags creates the default tag fixes file when it's missing, same as the installer's"
 rm "$TAGFIXES_FILE"
 NewMediaDir "Movie [favorite 480p].mp4"
-RunMedia media-fixtags -fl -y "Movie [favorite 480p].mp4"
+RunMedia media-fixtags -y "Movie [favorite 480p].mp4"
 AssertEqual "$(cat "$TMP/tagfixes.bak")" "$(cat "$TAGFIXES_FILE" 2>&1)"
 
 SetTestName "media-fixtags applies the default it just created"
@@ -126,7 +126,7 @@ AssertEqual "Movie [fav 480p].mp4" "$(ls)"
 SetTestName "media-fixtags reports a malformed tag fixes file"
 echo "([oops]='x'" > "$TAGFIXES_FILE"
 NewMediaDir "Movie [favorite 480p].mp4"
-RunMedia media-fixtags -fl -y "Movie [favorite 480p].mp4"
+RunMedia media-fixtags -y "Movie [favorite 480p].mp4"
 AssertSubstring "not a valid associative array" "$OUT"
 
 SetTestName "media-fixtags leaves files alone when the tag fixes file is malformed"
@@ -144,12 +144,12 @@ EOF
 
 SetTestName "media-fixtags fixes neighbouring tags in one run, with either whole-tag style"
 NewMediaDir "Clip [scifi documentary noir 720p].mp4"
-RunMedia media-fixtags -fl -y "Clip [scifi documentary noir 720p].mp4"
+RunMedia media-fixtags -y "Clip [scifi documentary noir 720p].mp4"
 AssertEqual "0 Clip [sci.fi doc film.noir 720p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtags removes duplicate tags, keeping the first, including ones a fix splits off"
 NewMediaDir "Clip [classic comedy classic romcom 720p].mp4"
-RunMedia media-fixtags -fl -y "Clip [classic comedy classic romcom 720p].mp4"
+RunMedia media-fixtags -y "Clip [classic comedy classic romcom 720p].mp4"
 AssertEqual "0 Clip [classic comedy romance 720p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtags reports a fix sed rejects and still applies the others"
@@ -158,13 +158,13 @@ AssertSubstring "Ignoring tag fix that sed rejects: [bad(]='x'" "$OUT"
 SetTestName "media-fixtags finds tagged files on a full scan (no file names given)"
 # Tag brackets are glob syntax; with nullglob on, a word-split file list used to drop them
 NewMediaDir "One [scifi 720p].mp4" "Two [sf 1080p].mp4"
-RunMedia media-fixtags -fl -y
+RunMedia media-fixtags -y
 AssertEqual $'0 One [sci.fi 720p].mp4\nTwo [sci.fi 1080p].mp4' "$RC $(ls)"
 
 SetTestName "media-fixtags won't overwrite another file that already has the new name"
 NewMediaDir "One [scifi 720p].mp4" "One [sci.fi 720p].mp4"
 echo "keep me" > "One [sci.fi 720p].mp4"
-RunMedia media-fixtags -fl -y
+RunMedia media-fixtags -y
 AssertEqual $'One [sci.fi 720p].mp4\nOne [scifi 720p].mp4|keep me' "$(ls)|$(cat "One [sci.fi 720p].mp4")"
 
 SetTestName "media-fixtags reports the file it didn't rename"
@@ -172,12 +172,12 @@ AssertSubstring "Not renamed, because another file already has the new name (dup
 
 SetTestName "media-fixtags leaves files that aren't media (DRB_MEDIA_EXTS) alone"
 NewMediaDir "One [scifi 720p].mp4" "Notes [scifi 720p].txt" "swapfile.sys"
-RunMedia media-fixtags -fl -y
+RunMedia media-fixtags -y
 AssertEqual $'0 Notes [scifi 720p].txt\nOne [sci.fi 720p].mp4\nswapfile.sys' "$RC $(ls)"
 
 SetTestName "media-fixtags works on extensions added to DRB_MEDIA_EXTS, in any case (and lower-cases them)"
 NewMediaDir "One [scifi 720p].MKV"
-DRB_MEDIA_EXTS="mp4 .mkv" RunMedia media-fixtags -fl -y
+DRB_MEDIA_EXTS="mp4 .mkv" RunMedia media-fixtags -y
 AssertEqual "0 One [sci.fi 720p].mkv" "$RC $(ls)"
 
 AUTOTAGS_FILE="$DRB_DATA/media-fixtags-autotags.shdata"
@@ -193,22 +193,22 @@ EOF2
 
 SetTestName "media-fixtags adds autotags whatever the case, and the tag fixes apply to them"
 NewMediaDir "STAR TREK Marathon [classic 720p].mp4"
-RunMedia media-fixtags -fl -y "STAR TREK Marathon [classic 720p].mp4"
+RunMedia media-fixtags -y "STAR TREK Marathon [classic 720p].mp4"
 AssertEqual "0 STAR TREK Marathon [classic sci.fi 720p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtags doesn't duplicate a tag the file already has, and keeps the resolution last"
 NewMediaDir "Startrek Live [sci.fi 720p].mp4"
-RunMedia media-fixtags -fl -y "Startrek Live [sci.fi 720p].mp4"
+RunMedia media-fixtags -y "Startrek Live [sci.fi 720p].mp4"
 AssertEqual "0 Startrek Live [sci.fi concert 720p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtags autotag patterns are regexes (\\b stops 'live' matching inside 'Delivery')"
 NewMediaDir "Delivery Day [720p].mp4"
-RunMedia media-fixtags -fl -y "Delivery Day [720p].mp4"
+RunMedia media-fixtags -y "Delivery Day [720p].mp4"
 AssertEqual "0 Delivery Day [720p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtags adds autotags to a file whose only tag is the resolution"
 NewMediaDir "Live at Home [1080p].mp4"
-RunMedia media-fixtags -fl -y "Live at Home [1080p].mp4"
+RunMedia media-fixtags -y "Live at Home [1080p].mp4"
 AssertEqual "0 Live at Home [concert 1080p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtags reports an autotag that isn't a valid regex"
@@ -220,7 +220,7 @@ AssertEqual 0 "$(grep -c 'ERROR:' <<< "$OUT")"
 SetTestName "media-fixtags creates the default autotags file when it's missing, same as the installer's"
 rm "$AUTOTAGS_FILE"
 NewMediaDir "Movie [classic 480p].mp4"
-RunMedia media-fixtags -fl -y "Movie [classic 480p].mp4"
+RunMedia media-fixtags -y "Movie [classic 480p].mp4"
 AssertEqual "$(cat "$TMP/autotags.bak")" "$(cat "$AUTOTAGS_FILE" 2>&1)"
 cp "$TMP/tagfixes.bak" "$TAGFIXES_FILE"
 
@@ -264,7 +264,7 @@ AssertEqual "Set All Other Words That Should Appear Media Titles [t 720p].mp4" "
 
 SetTestName "media-fixtitle renames a file that needs it and leaves a correct one alone"
 NewMediaDir "the lord of the rings [fav 1080p].mp4" "Already Fine [x 720p].mp4"
-RunMedia media-fixtitle -fl "the lord of the rings [fav 1080p].mp4" "Already Fine [x 720p].mp4"
+RunMedia media-fixtitle "the lord of the rings [fav 1080p].mp4" "Already Fine [x 720p].mp4"
 AssertEqual $'Already Fine [x 720p].mp4\nThe Lord of the Rings [fav 1080p].mp4' "$(ls)"
 
 SetTestName "media-fixtitle exits 0 when every file succeeds"
@@ -276,7 +276,7 @@ AssertSubstring "Files failed: 0" "$OUT"
 SetTestName "media-fixtitle deletes backup (~) and partial (.part) files and keeps the rest"
 # No input means the deletion prompt takes its default: yes
 NewMediaDir "Keeper [x 720p].mp4" "Keeper [x 720p].mp4~" "Download [x 720p].mp4.part"
-RunMedia media-fixtitle -fl "Keeper [x 720p].mp4" "Keeper [x 720p].mp4~" "Download [x 720p].mp4.part"
+RunMedia media-fixtitle "Keeper [x 720p].mp4" "Keeper [x 720p].mp4~" "Download [x 720p].mp4.part"
 AssertEqual "0 Keeper [x 720p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtitle counts the deletions"
@@ -286,7 +286,7 @@ SetTestName "media-fixtitle ignores a deletion pattern that would match every fi
 cp "$DRB_DATA/media-fixtitle-delete.shdata" "$TMP/delete.bak"
 echo "()" > "$DRB_DATA/media-fixtitle-delete.shdata"
 NewMediaDir "Keeper [x 720p].mp4"
-RunMedia media-fixtitle -fl "Keeper [x 720p].mp4"
+RunMedia media-fixtitle "Keeper [x 720p].mp4"
 AssertEqual "0 Keeper [x 720p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtitle warns about the ignored pattern"
@@ -295,13 +295,34 @@ cp "$TMP/delete.bak" "$DRB_DATA/media-fixtitle-delete.shdata"
 
 SetTestName "media-fixtitle finds tagged files on a full scan (no file names given)"
 NewMediaDir "the lord of the rings [fav 1080p].mp4"
-RunMedia media-fixtitle -fl
+RunMedia media-fixtitle
 AssertEqual "0 The Lord of the Rings [fav 1080p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtitle and media-fixtags silently ignore the obsolete -fl"
+NewMediaDir "the lord of the rings [fav 1080p].mp4"
+RunMedia media-fixtitle -fl
+out1="$RC $OUT"
+RunMedia media-fixtags -fl -y
+AssertEqual "0|0|The Lord of the Rings [fav 1080p].mp4" "${out1%% *}|$RC|$(ls)"
+
+SetTestName "media-fixtitle rejects -fs as an obsolete parameter"
+RunMedia media-fixtitle -fs
+AssertEqual "1|Obsolete parameter: -fs" "$RC|$(grep -o 'Obsolete parameter: -fs' <<< "$OUT")"
+
+SetTestName "media-fixtags rejects -fs as an obsolete parameter"
+RunMedia media-fixtags -fs -y
+AssertEqual "1|Obsolete parameter: -fs" "$RC|$(grep -o 'Obsolete parameter: -fs' <<< "$OUT")"
+
+SetTestName "media-fixtitle and media-fixtags leave no marker files behind"
+NewMediaDir "the lord of the rings [fav 1080p].mp4"
+RunMedia media-fixtitle
+RunMedia media-fixtags -y
+AssertEqual "The Lord of the Rings [fav 1080p].mp4" "$(ls -A)"
 
 SetTestName "media-fixtitle won't overwrite another file that already has the new name"
 NewMediaDir "the movie [x 720p].mp4" "The Movie [x 720p].mp4"
 echo "keep me" > "The Movie [x 720p].mp4"
-RunMedia media-fixtitle -fl
+RunMedia media-fixtitle
 AssertEqual $'1 The Movie [x 720p].mp4\nthe movie [x 720p].mp4|keep me' "$RC $(LC_ALL=C ls)|$(cat "The Movie [x 720p].mp4")"
 
 SetTestName "media-fixtitle reports the file it didn't rename"
@@ -309,12 +330,12 @@ AssertSubstring "Not renamed, because another file already has the new name (dup
 
 SetTestName "media-fixtitle leaves files that aren't media (DRB_MEDIA_EXTS) alone"
 NewMediaDir "the lord of the rings [fav 1080p].mp4" "Read me [x 720p].txt" "Swapfile.sys"
-RunMedia media-fixtitle -fl
+RunMedia media-fixtitle
 AssertEqual $'0 Read me [x 720p].txt\nSwapfile.sys\nThe Lord of the Rings [fav 1080p].mp4' "$RC $(ls)"
 
 SetTestName "media-fixtitle simulation (-s) doesn't rename"
 NewMediaDir "the lord of the rings [fav 1080p].mp4"
-RunMedia media-fixtitle -s -fl "the lord of the rings [fav 1080p].mp4"
+RunMedia media-fixtitle -s "the lord of the rings [fav 1080p].mp4"
 AssertEqual "the lord of the rings [fav 1080p].mp4" "$(ls)"
 
 # ---------- drbashctl: word lists ----------

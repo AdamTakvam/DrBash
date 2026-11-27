@@ -34,9 +34,7 @@ PrintHelp () {
     \t-s\tSimulate what would be done in a real run (equivalent to -vv).
     \t-r\tReevaluate resolution tags for all files
     \t-y\tUnattended mode. Assume default responses to all prompts.
-    \t-st\tDeveloper testing mode.
-    \t-fs\tForce short run (since .lastrun file modification date).
-    \t-fl\tForce long run (ignore .lastrun file)."
+    \t-st\tDeveloper testing mode."
   Log
   Log "$(Header "FILE")\t(optional) One or more files or glob pattern to process."
   LogTable "\tIf not specified, all media files in DRB_MEDIA_STAGING will be processed.
@@ -68,10 +66,10 @@ PrintHelp () {
     \t* Any text after the close bracket will be removed."
   Log
   LogHeader "Usage Examples:"
-  LogTable "\t* To force a long (all files) run with resolution (re)tagging and verbose logging, do:
-    \t$APPNAME -v -r -fl
+  LogTable "\t* To process every media file with resolution (re)tagging and verbose logging, do:
+    \t$APPNAME -v -r
     \t* $(ColorText LRED "Do NOT:")
-    \t$APPNAME -vrfl
+    \t$APPNAME -vr
     \t* Process only files with mp4 extension in current directory with debug logging:
     \t$APPNAME -vv \"./*.mp4\""
   Log
@@ -234,12 +232,13 @@ ParseCLI() {
         LogEnableDebug ;;
       -r)
         let rezOverride=1 ;;
-      -fs)
-        let forceShortRun=1 ;;
-      -fl)
-        let forceLongRun=1 ;;
       -y)
         let unattended=1 ;;
+      -fl)
+        ;; # Obsolete: "force long run" is the only kind of run now
+      -fs)
+        LogError "ERROR: Obsolete parameter: -fs (short runs are no longer possible; every run processes every media file)"
+        exit 1 ;;
       -v | -vv | -q)
         ;; # Handled by "parent class": logger.sh
       -*)
@@ -295,26 +294,8 @@ ReadConfig() {
 }
 
 declare -a fileSet
-declare -r LastRunFileExt="lastrun"
-declare -r LastRunFile=".$APPNAME.$LastRunFileExt"
 
 BuildTargetList() {
-  failReason="<unknown>"
-  successReason="<unknown>"
-  if [ $forceLongRun ]; then
-    failReason="long run was forced by command-line parameter."
-  elif [ ! -e "$LastRunFile" ];then 
-    failReason="$LastRunFile does not exist."
-  elif [ $forceShortRun ]; then
-    successReason="short run was forced by command-line parameter."
-    shortRun='y'
-  elif [ "$(cat $LastRunFile)" == "${targetFiles[*]}" ]; then
-    successReason="$LastRunFile exists and its contents match the current run parameters."
-    shortRun='y'
-  else
-    failReason="the requested text to remove does not match what was previously specified.\nPrevious: $(cat $LastRunFile)\nCurrent:  ${targetFiles[*]}"
-  fi
-  
   if [ "$testMode" ]; then
     declare -r testFilePrefix='='
   
@@ -334,17 +315,9 @@ BuildTargetList() {
         LogVerbose "\t- $f"
       done
     fi
-  elif [ $shortRun ]; then
-    Log "Performing abbreviated run because $successReason"
-    # The sed part removes the leading ./ from the filename
-    IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f -newer "$LastRunFile" | sed 's/^\.\///')
   else
-    if [ $forceShortRun ]; then
-      LogError "Cannot perform abbreviated run because $failReason"
-    else
-      Log "Performing full scan of $PWD"
-    fi
-
+    Log "Performing full scan of $PWD"
+    # The sed part removes the leading ./ from the filename
     IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f | sed 's/^\.\///')
   fi
   
@@ -355,6 +328,7 @@ BuildTargetList() {
     [[ "$unattended" == 1 ]] || read -n1 -t10 -p "Are you sure you want to continue [Y/n] (10s)? " cont; echo
     [[ "${cont,,}" == 'n' ]] && exit 0
   fi
+  return 0
 }
 
 declare -l doFileOp='y' prompt='y'
@@ -367,7 +341,6 @@ FixTags() {
   # There are some files we need to ignore
   [ -e "$filename" ] || return 0 # Hack around bash bugs
   [ ${#filename} -lt 5 ] && return 0
-  [[ "$filename" =~ .$LastRunFileExt$ ]] && return 0
   if ! IsMediaFile "$filename"; then
     LogVerbose "Skipping (not a media file): $filename"
     return 0
@@ -444,11 +417,6 @@ WrapUp() {
     done
   else
     Log '\nNo errors detected!'
-  fi
-
-  if [ "$retval" -eq 0 ]; then
-    # Manage the "last run" file marker
-    touch "$LastRunFile"
   fi
 
   Log "Files renamed: $renameCount"

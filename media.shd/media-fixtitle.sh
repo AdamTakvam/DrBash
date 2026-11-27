@@ -24,9 +24,7 @@ PrintHelp () {
   Log "$(Header "Usage:") $APPNAME [OPTIONS...] [FILE...]"
   Log
   Log "$(Header "OPTIONS")\t(optional; do not combine)"
-  LogTable "\t-fl\tForce long run (ignore .lastrun file).
-  \t-fs\tForce short run (since .lastrun file modification date).
-  \t-h\tDisplay this help text.
+  LogTable "\t-h\tDisplay this help text.
   \t-s\tSimulate what would be done in a real run (implies -v).
   \t-st\tDeveloper testing mode.
   \t-v\tVerbose output.
@@ -103,10 +101,8 @@ PrintHelp () {
   Log "Note: Set the DRB_DATA environment variable to the desired path of the preceding data files."
   Log
   Log "$(Header "Usage Examples:")"
-  Log "\tTo force a long (all files) run with verbose logging, do:
-  \t\t$(ColorText LGREEN "$APPNAME -v -fl")
-  \tDo NOT:
-  \t\t$(ColorText LRED "$APPNAME -vfl")
+  Log "\tTo process every media file in the current directory with verbose logging, do:
+  \t\t$(ColorText LGREEN "$APPNAME -v")
   \tProcess only files with mp4 extension in the current directory with verbose logging:
   \t\t$(ColorText LGREEN "$APPNAME -v \"*.mp4\"")"
   Log
@@ -305,10 +301,11 @@ ParseCLI() {
         testMode=1 ;;
       -s)
         LogEnableDebug ;;
-      -fs)
-        forceShortRun=1 ;;
       -fl)
-        forceLongRun=1 ;;
+        ;; # Obsolete: "force long run" is the only kind of run now
+      -fs)
+        LogError "ERROR: Obsolete parameter: -fs (short runs are no longer possible; every run processes every media file)"
+        exit 1 ;;
       -v | -vv | -q)
         ;; # Handled by "parent class": logger.sh
       -*)
@@ -344,32 +341,8 @@ ParseCLI() {
 
 # Get the set of files to act on
 declare -a fileSet
-declare -r LastRunFileExt="lastrun" 
-declare -r LastRunFile=".$APPNAME.$LastRunFileExt"
 
 BuildTargetList() {
-  failReason="<unknown>"
-  successReason="<unknown>"
-  if [ $forceLongRun ]; then
-    failReason="long run was forced by command-line parameter."
-  elif [ ! -e "$LastRunFile" ];then 
-    failReason="$LastRunFile does not exist."
-  elif [ $forceShortRun ]; then
-    successReason="short run was forced by command-line parameter."
-    shortRun='y'
-  elif [ "$(cat $LastRunFile)" == "${TRIMPATTERNS[*]}" ]; then
-    successReason="$LastRunFile exists and its contents match the current run parameters."
-    shortRun='y'
-  else
-    failReason="the requested text to remove does not match what was previously specified.\n"
-    failTemp="Previous:\tCurrent:\n"
-    IFS=$'\n'; readarray -t lrfPatterns < "$LastRunFile"
-    for (( i=0; i<${#TRIMPATTERNS[*]}; i++ )); do
-      failTemp+="${lrfPatterns[$i]}\t${TRIMPATTERNS[$i]}\n"
-    done
-    failReason+="$(printf "%s\n" "$failTemp" | FormatTable)"
-  fi
-  
   if [ "$testMode" ]; then
     declare -r testFilePrefix='='
     
@@ -389,12 +362,8 @@ BuildTargetList() {
         LogVerbose "\t- $f"
       done
     fi
-  elif [ $shortRun ]; then
-    Log "Performing abbreviated run because $successReason"
-    # The sed part removes the leading ./ from the filename
-    IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f -newer "$LastRunFile" | sed 's/^\.\///')
   else
-    LogError "Cannot perform abbreviated run because $failReason"
+    # The sed part removes the leading ./ from the filename
     IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f | sed 's/^\.\///')
   fi
   
@@ -407,6 +376,7 @@ BuildTargetList() {
     [ "${cont,,}" == 'n' ] && exit 1
     unset cont
   fi
+  return 0
 }
 
 declare -l renameFile='y' prompt='y'
@@ -420,7 +390,6 @@ FixTitle() {
   # There are some files we need to ignore
   [ -e "$filename" ] || return  # Hack around bash bugs
   [ ${#filename} -lt 5 ] && return
-  [[ "$filename" =~ .$LastRunFileExt$ ]] && return 0
 
   # Junk files are queued for deletion at the end of the run instead of renamed.
   # This has to happen here: NormalizeTitle() runs in a subshell, where adding to deleteFiles would be lost.
@@ -517,11 +486,6 @@ DeleteFiles() {
   done
 }
 
-UpdateLastRunFile() {
-  # Manage the "last run" file marker
-  echo "${TRIMPATTERNS[*]}" > $LastRunFile
-}
-
 PrintSummary() {
   Log "Files renamed: $renameCount"
   Log "Files deleted: $deleteCount"
@@ -553,7 +517,6 @@ if ! IsSourced; then
   DeleteFiles
   
   # --- Wrap Up ---
-  UpdateLastRunFile
   PrintSummary
   
   exit ${#errorFiles[@]}
