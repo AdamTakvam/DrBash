@@ -579,7 +579,7 @@ GetFileProps() {
       [[ ${#_filenames[@]} == 0 ]] && { LogError "Cannot show pairs of results when you have no results!"; return 0; }
     fi
 
-    (( ${#filenames[@]} > 50 )) && Log "Please wait..."
+    (( ${#_filenames[@]} > 50 )) && Log "Please wait..."
 
     for (( i=0; i < ${#_filenames[@]}; i++ )); do
       local file="${_filenames[$i]}"
@@ -587,14 +587,16 @@ GetFileProps() {
       ConfigGet_MEDIA_COMPACT && compact=1
   
       LogDebug "Calling: mediainfo $file"
-      local _info="$(mediainfo "$file")"
+      local _info
+      _info="$(mediainfo "$file")"     # Not on the local line: there, $? would be local's status, always 0
 
       if [[ "$?" == 0 ]] && [[ -n "$_info" ]]; then
   
         # Extract duration from vInfo as a scalar value
         local size="$(echo "$_info" | grep 'File size' | cut -d: -f2 | Trim --)"
         local duration="$(echo "$_info" | grep "Duration" | head -n1 | cut -d: -f2)"
-        duration="$(printf "%s" "$duration" | awk '{ if ($2 == "h") $1=($1*3600)+($3*60); else $1=$1*60+$3; print $1 }')"
+        # mediainfo writes number/unit pairs: "1 h 5 min", "5 min 3 s", "45 s 120 ms". Milliseconds are dropped.
+        duration="$(printf "%s" "$duration" | awk '{ t=0; for (i=1; i<NF; i+=2) { v=$i; u=$(i+1); if (u=="h") t+=v*3600; else if (u=="min") t+=v*60; else if (u=="s") t+=v } print int(t) }')"
         LogDebug "size = $size"
         LogDebug "duration = $duration"
   
@@ -667,7 +669,7 @@ GetFileProps() {
       flush_group
     elif (( duration == prev_duration )); then
       style=4                               # italics
-      [[ size == prev_size ]] && style=5    # underline
+      [[ "$size" == "$prev_size" ]] && style=5    # underline
     fi
 
     group_props+=("$(printf "%d~%s" "$style" "$b64_vInfo")") 
