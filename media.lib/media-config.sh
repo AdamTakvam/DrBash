@@ -75,6 +75,21 @@ IsMediaFile() {
   return 1
 }
 
+# Succeeds if renaming file $1 to $2 would overwrite a different file
+# + $1 = Current file name (in the current directory)
+# + $2 = New file name
+# Note: On a case-insensitive file system (e.g. a Windows share), -e finds the file under any
+#   spelling, and -ef doesn't always see that it's the same file. So for a rename that only
+#   changes case, only an entry listed with exactly the new spelling counts as a different file.
+NameTaken() {
+  [ -e "$2" ] || return 1
+  [ "$1" -ef "$2" ] && return 1
+  if [[ "${1,,}" == "${2,,}" ]]; then
+    ls -1A | grep -Fxq -- "$2" || return 1
+  fi
+  return 0
+}
+
 # Display media properties in compact (one line) form
 ConfigGet_MEDIA_COMPACT() {
   ConfigEvalBool "${DRB_MEDIA_COMPACT:-$_MEDIA_COMPACT_DEF}" >/dev/null

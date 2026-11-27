@@ -416,8 +416,8 @@ FixTags() {
       Journal "$fileOpText" 
 
       # Never overwrite another file: two names that normalize the same are usually duplicates, and need a person.
-      # -ef: on a case-insensitive file system, a case-only rename "exists" already, but it's the same file.
-      if [ -e "$newFilename" ] && ! [ "$filename" -ef "$newFilename" ]; then
+      # A rename that only changes case is fine on a case-insensitive file system (see NameTaken).
+      if NameTaken "$filename" "$newFilename"; then
         LogError "Not renamed, because another file already has the new name (duplicate?): $filename"
         return 1
       fi
