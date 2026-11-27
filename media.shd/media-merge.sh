@@ -105,7 +105,12 @@ DoMerge() {
           while [ $valid_choice == 0 ]; do
             valid_choice=1
             Log -n "Which file do you want to $(ColorText LGREEN "KEEP") [1 or 2] or [b]oth or [a]bort? "
-            read -n1 choice; echo
+            if ! read -n1 choice; then    # Input ended (not a terminal): asking again would loop forever
+              echo
+              LogError "No answer (input ended). Stopping the merge; nothing more was moved or deleted."
+              return 1
+            fi
+            echo
             case ${choice,,} in
               1)
                 [ "$(LogDebugEnabled)" ] || Journal "Deleting: $file2 by user command"
@@ -136,7 +141,7 @@ DoMerge() {
     
         Log "Moving remaining media files into main archive..."
         _GetMediaFiles "files"
-        for file in "$files"; do
+        for file in "${files[@]}"; do
           Run mv -n "$file" "$mediadir/"
         done
       fi
