@@ -15,7 +15,7 @@ PrintHelp() {
   Log "Moves processed media files from the staging area to the media archive."
   Log
   Log "\tStaging area = PWD = $PWD"
-  Log "\tMedia archive = MEDIAREPO = ${MEDIAREPO:-<not set>}"
+  Log "\tMedia archive = DRB_MEDIA_REPO = $(ConfigGet_MEDIA_REPO)"
   Log
   LogTable "$(Header "Usage:")\t$APPNAME [FLAGS] [MEDIA_ARCHIVE]
   \t$APPNAME [FLAGS] [FILE...]
@@ -26,18 +26,18 @@ PrintHelp() {
   Log
   LogHeader "Parameters:"
   LogTable "\tMEDIA_ARCHIVE\tLocation of primary long-term media storage.
-  \t\tOverrides MEDIAREPO variable value. 
+  \t\tOverrides DRB_MEDIA_REPO variable value. 
   \tFILE...\tOne or more individual filenames or glob pattern designating a subset of the staging population to be acted upon exclusively."
   Log
   Log "Environment Variables:"
-  LogTable "\tMEDIAREPO\tThe location of your main media repositrory
+  LogTable "\tDRB_MEDIA_REPO\tThe location of your main media repositrory
   \tDRB_MEDIA_EXTS\tA space-delimited list of your media file extensions (default=$_MEDIA_EXTS_DEF)."
   Log
   LogHeader "Configuration File:"
   Log "\tFor convenience, you may also configure this script via a configuration file. The configuration file must be a Bash-sourcable script simply declaring the names and values of the operative variables used in this script (as listed above)."
   Log "\tConfig file location: ${DRB_DATA}/media-scripts.conf"
   Log "\tExample content:"
-  Log "\t\tMEDIAREPO='/path/to/my/media'"
+  Log "\t\tDRB_MEDIA_REPO='/path/to/my/media'"
   Log "\t\tDRB_MEDIA_EXTS='mpeg mp4 avi gif'"
   Log "\tNotes:" 
   Log "\t\t1. The config file location can be controlled by setting the DRB_DATA environment variable." 
@@ -55,7 +55,11 @@ _GetMediaFiles() {
 
 DoMerge() {
   local -r stagingdir="$(realpath "$PWD")"
-  [ -z "$mediadir" ] && mediadir="$(realpath "$MEDIAREPO")"
+  if [ -z "$mediadir" ]; then
+    mediadir="$(ConfigGet_MEDIA_REPO)"
+    mediadir="${mediadir/#\~/$HOME}"     # The default is written as ~/Videos
+    [ "$mediadir" ] && mediadir="$(realpath "$mediadir")"
+  fi
   local -a mediaexts
   IFS=$' \t\n' read -ra mediaexts <<< "$(ConfigGet_MEDIA_EXTS)"
   EditArray -p='*.' mediaexts
@@ -65,7 +69,7 @@ DoMerge() {
     read -p "Provide the fully-qualified path to your media archive directory or just press <enter> to abort: " mediadir
     [ -z "$mediadir" ] && exit 1
     mediadir="$(realpath "$mediadir")"
-    export MEDIAREPO="$mediadir"
+    export DRB_MEDIA_REPO="$mediadir"
   fi
 
   if [[ "$mediadir" == "$stagingdir" ]]; then
