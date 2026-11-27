@@ -36,7 +36,7 @@ EditArray() {
   unset array prefix suffix match_exp repl_expr  # Hey, you never know!
   local -n array
 
-  for p in $@; do
+  for p in "$@"; do   # Quoted: nullglob would drop -p=*. and spaces would split -p=$'\t* '
     pv="${p#*=}"
     p="${p%%=*}"
     
@@ -56,7 +56,7 @@ EditArray() {
   
   for (( i=0; i<${#array[@]}; i++ )); do
     if [ "$match_exp" ]; then
-      array[$i]="$(sed -E "s/$match_exp/$repl_exp/g")"
+      array[$i]="$(sed -E "s/$match_exp/$repl_expr/g" <<< "${array[$i]}")"
     fi
     array[$i]="${prefix}${array[$i]}${suffix}"
   done
