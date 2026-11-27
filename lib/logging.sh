@@ -759,11 +759,11 @@ CreateFontCode() {
   fi
 
   # Correct invalid params to something that works
-  if [[ $color < 30 || $color > 37 ]]; then
+  if (( color < 30 || color > 37 )); then
     color=$(( (color % 8) + 30 ))
-  elif [[ $style < 0 || $style > 7 ]]; then
+  elif (( style < 0 || style > 7 )); then
     style=$(( style % 8 ))
-  elif [[ $bgrnd < 40 || $bgrnd > 47 ]]; then
+  elif (( bgrnd < 40 || bgrnd > 47 )); then
     bgrnd=$(( (bgrnd % 8) + 40 ))
   fi
   
