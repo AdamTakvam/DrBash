@@ -8,8 +8,8 @@ declare -r CONFIGFILE="$DRB_DATA/media-scripts.conf"
 declare -r DEFAULT_USER='root'
 declare -r DEFAULT_GROUP='users'
 declare -ir DEFAULT_PERMS=644
-declare -ar RO_PATHS=('/porn' '/media-share')
-declare -ar RW_PATHS=('/share' '/porn/new')
+declare -ar RO_PATHS=('/archive' '/media-share')
+declare -ar RW_PATHS=('/share' '/archive/new')
 
 Help() {
   tabs 4
