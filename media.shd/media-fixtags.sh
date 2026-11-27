@@ -53,6 +53,14 @@ PrintHelp () {
     \t( [key1]=value1 \\ 
     \t  [key2]=value2 )"
   Log
+  Log "$(Header "Data File:")\t$DRB_DATA/$APPNAME-autotags.shdata"
+  LogTable "\tAssociative array of extended regular expressions to look for in the title (key)
+    \tand the tag to add when one is found (value). Matching ignores case.
+    \tAutotags are added before the tag fixes run, so the fixes apply to them too.
+    \tFor example:
+    \t( ['star ?trek']='scifi' \\
+    \t  ['\\blive\\b']='concert' )"
+  Log
   LogHeader "Filename Normalization:"
   LogTable "\t* Reduces multiple sequential space characters to just one space character.
     \t* Ensures all tags are lower-case.
@@ -82,6 +90,35 @@ FixTagList() {
     fixed="$(sed -E "${TAGFIX_SED[@]}" <<< "$fixed")" || return 1
   fi
   tr -s '[:space:]' '\n' <<< "$fixed" | awk 'NF && !seen[$0]++' | paste -sd' '
+}
+
+# Lists the tags to add because a pattern in AUTOTAGS was found in the title. Matching ignores case.
+# +$1 = title
+# -stdout = tags to add, separated by spaces
+AutoTags() {
+  local title="$1" pattern restore
+  local -a found=()
+  restore="$(shopt -p nocasematch)"
+  shopt -s nocasematch
+  for pattern in "${!AUTOTAGS[@]}"; do
+    [[ "$title" =~ $pattern ]] && found+=("${AUTOTAGS[$pattern]}")
+  done
+  $restore
+  local IFS=' '
+  echo -n "${found[*]}"
+}
+
+# Adds tags to a tag list, before the resolution tag if the list ends with one (the resolution stays last)
+# +$1 = tags, separated by spaces
+# +$2 = tags to add, separated by spaces
+# -stdout = combined tags
+AddTags() {
+  local tags="$1" add="$2" last="${1##* }"
+  if [[ "$last" =~ ^([0-9]{3,4}p|[2468]k)$ ]]; then
+    [[ "$tags" == *" "* ]] && echo -n "${tags% *} $add $last" || echo -n "$add $last"
+  else
+    echo -n "${tags:+$tags }$add"
+  fi
 }
 
 # If tag list does not contain the file resolution,
@@ -146,6 +183,11 @@ NormalizeTags() {
   # Reminder: "${arr[*]}"  <-- Serialization
   #           "${arr[@]}"  <-- Iteration
   #           "${!arr[@]}" <-- Get key values of associative array (hashtable)
+
+  # Add tags for patterns found in the title. Before the fixes, so they apply to these too.
+  local autotags
+  autotags="$(AutoTags "$title")"
+  [ "$autotags" ] && tags="$(AddTags "$tags" "$autotags")"
 
   # Perform tag substitutions and remove duplicate tags
   if [ "$tags" ]; then
@@ -224,6 +266,20 @@ ReadConfig() {
   declare -gA TAGFIXES    # -g: NormalizeTags() uses it after this function returns
   ConfigFile_TAGFIXES TAGFIXES
   LogVerbose "TagFixes: ${#TAGFIXES[@]}"
+
+  # Load the autotags data file. A pattern bash can't compile is reported and left out.
+  declare -gA AUTOTAGS
+  ConfigFile_AUTOTAGS AUTOTAGS
+  local pattern
+  local -i rc
+  for pattern in "${!AUTOTAGS[@]}"; do
+    rc=0
+    [[ "" =~ $pattern ]] || rc=$?    # Inside || so a non-match (1) doesn't set off the ERR trap; 2 = bad regex
+    if (( rc == 2 )); then
+      LogError "Ignoring autotag that isn't a valid regex: [$pattern]='${AUTOTAGS[$pattern]}'"
+      unset 'AUTOTAGS[$pattern]'
+    fi
+  done
 
   # Turn the fixes into one sed script, so each file needs one sed run instead of one per fix.
   # A fix sed rejects is reported and left out, rather than failing every file.

@@ -68,6 +68,9 @@ AssertEqual "# Set of words or regex patterns that if matched in a media file's 
 SetTestName "Installer creates the tag fixes example: a comment and one fix"
 AssertEqual $'# Set of replacement patterns used to normalize media tags.\n([favorite]=\'fav\')' "$(cat "$TAGFIXES_FILE")"
 
+SetTestName "Installer creates the autotags file: a comment and ()"
+AssertEqual $'# Set of words or regex patterns that, if found in a media title, add the tag given as the value.\n()' "$(cat "$DRB_DATA/media-fixtags-autotags.shdata")"
+
 SetTestName "Installer doesn't overwrite existing data files"
 echo "mine" > "$DRB_DATA/media-fixtitle-abbr.shdata"
 InstallMediaConfig
@@ -177,6 +180,48 @@ NewMediaDir "One [scifi 720p].MKV"
 DRB_MEDIA_EXTS="mp4 .mkv" RunMedia media-fixtags -fl -y
 AssertEqual "0 One [sci.fi 720p].mkv" "$RC $(ls)"
 
+AUTOTAGS_FILE="$DRB_DATA/media-fixtags-autotags.shdata"
+cp "$AUTOTAGS_FILE" "$TMP/autotags.bak"
+cat > "$AUTOTAGS_FILE" <<'EOF2'
+# Test autotags
+(
+  ['star ?trek']='scifi'
+  ['\blive\b']='concert'
+  ['bad(']='x'
+)
+EOF2
+
+SetTestName "media-fixtags adds autotags whatever the case, and the tag fixes apply to them"
+NewMediaDir "STAR TREK Marathon [classic 720p].mp4"
+RunMedia media-fixtags -fl -y "STAR TREK Marathon [classic 720p].mp4"
+AssertEqual "0 STAR TREK Marathon [classic sci.fi 720p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtags doesn't duplicate a tag the file already has, and keeps the resolution last"
+NewMediaDir "Startrek Live [sci.fi 720p].mp4"
+RunMedia media-fixtags -fl -y "Startrek Live [sci.fi 720p].mp4"
+AssertEqual "0 Startrek Live [sci.fi concert 720p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtags autotag patterns are regexes (\\b stops 'live' matching inside 'Delivery')"
+NewMediaDir "Delivery Day [720p].mp4"
+RunMedia media-fixtags -fl -y "Delivery Day [720p].mp4"
+AssertEqual "0 Delivery Day [720p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtags adds autotags to a file whose only tag is the resolution"
+NewMediaDir "Live at Home [1080p].mp4"
+RunMedia media-fixtags -fl -y "Live at Home [1080p].mp4"
+AssertEqual "0 Live at Home [concert 1080p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtags reports an autotag that isn't a valid regex"
+AssertSubstring "Ignoring autotag that isn't a valid regex: [bad(]='x'" "$OUT"
+
+SetTestName "media-fixtags doesn't log an error for valid autotags"
+AssertEqual 0 "$(grep -c 'ERROR:' <<< "$OUT")"
+
+SetTestName "media-fixtags creates the default autotags file when it's missing, same as the installer's"
+rm "$AUTOTAGS_FILE"
+NewMediaDir "Movie [classic 480p].mp4"
+RunMedia media-fixtags -fl -y "Movie [classic 480p].mp4"
+AssertEqual "$(cat "$TMP/autotags.bak")" "$(cat "$AUTOTAGS_FILE" 2>&1)"
 cp "$TMP/tagfixes.bak" "$TAGFIXES_FILE"
 
 # ---------- media-fixtitle: NormalizeTitle() ----------

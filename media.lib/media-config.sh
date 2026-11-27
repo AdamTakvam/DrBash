@@ -114,6 +114,7 @@ declare -rg FILE_FILLER="${DRB_DATA:-.}/media-fixtitle-filler.shdata"
 declare -rg FILE_PATTERNS="${DRB_DATA:-.}/media-fixtitle-patterns.shdata"
 declare -rg FILE_DELETE="${DRB_DATA:-.}/media-fixtitle-delete.shdata"
 declare -rg FILE_TAGS="${DRB_DATA:-.}/media-fixtags-tagfixes.shdata"
+declare -rg FILE_AUTOTAGS="${DRB_DATA:-.}/media-fixtags-autotags.shdata"
 
 # Reads a one-entry-per-line data file into an array, skipping blank lines and # comments
 # + $1 = The name of the array to fill
@@ -187,6 +188,22 @@ ConfigFile_TAGFIXES() {
   #   whole file as a single value under key 0.
   eval "_out=$(grep -Ev '^[[:space:]]*#' "$FILE_TAGS")" || { LogError "Tag Fixes file is not a valid associative array: $FILE_TAGS"; return 1; }
   LogVerbose "Tag Fixes: ${#_out[@]}"
+}
+
+# Dictionary of title patterns to tags: a file whose title matches a key gets the value added to its tags
+# + $1 = The name of an associative array (declare -A) to load the autotags into
+# The file holds the right-hand side of an associative array declaration: ([regex]='tag' ...)
+#   Matching ignores case. Lines starting with # are comments.
+ConfigFile_AUTOTAGS() {
+  local -n _out="$1"
+
+  if [ ! -f "$FILE_AUTOTAGS" ]; then
+    LogVerbose "Autotags file does not exist. Creating default..."
+    printf '%s\n' "# Set of words or regex patterns that, if found in a media title, add the tag given as the value." "()" > "$FILE_AUTOTAGS"
+  fi
+
+  eval "_out=$(grep -Ev '^[[:space:]]*#' "$FILE_AUTOTAGS")" || { LogError "Autotags file is not a valid associative array: $FILE_AUTOTAGS"; return 1; }
+  LogVerbose "Autotags: ${#_out[@]}"
 }
 
 # ---------------------- Initialize ---------------------------

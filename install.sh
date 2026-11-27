@@ -140,6 +140,10 @@ InstallMediaConfig() {
   [[ -e "$data/media-fixtags-tagfixes.shdata" ]] || printf '%s\n' \
     "# Set of replacement patterns used to normalize media tags." \
     "([favorite]='fav')" > "$data/media-fixtags-tagfixes.shdata"
+
+  [[ -e "$data/media-fixtags-autotags.shdata" ]] || printf '%s\n' \
+    "# Set of words or regex patterns that, if found in a media title, add the tag given as the value." \
+    "()" > "$data/media-fixtags-autotags.shdata"
 }
 
 InstallManpages() {
