@@ -81,8 +81,9 @@ else
   sudo chown $DRB_MEDIA_USER:$DRB_MEDIA_GROUP *
 fi
 
-Log "Setting file permissions in $PWD to (o+rw,g+rw,a+r)"
-sudo chmodt f u+rw,g+r,o+r
+Log "Setting file permissions in $PWD to (u+rw,g+r,o+r)"
+# No sudo here: chmodt runs sudo chmod itself, and sudo can't find scripts in DRB_BIN (secure_path)
+chmodt f u+rw,g+r,o+r
 
 echo "-------------------- Fix Titles -----------------------"
 Run -u media-fixtitle ${flags[@]} || exit $?
