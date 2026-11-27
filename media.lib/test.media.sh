@@ -205,6 +205,12 @@ AssertEqual "Loud [t 720p].mp4" "$(NormalizeTitle "loud [t 720p].MP4")"
 SetTestName "NormalizeTitle handles a name without tags"
 AssertEqual "No Tags Here.mp4" "$(NormalizeTitle "no tags here.mp4")"
 
+SetTestName "NormalizeTitle removal patterns can use | and / (the sed delimiter is a control character)"
+cp "$DRB_DATA/media-fixtitle-patterns.shdata" "$TMP/patterns.bak"
+printf '%s\n' '\bdemo(\s|$)' 'a/b ' > "$DRB_DATA/media-fixtitle-patterns.shdata"
+AssertEqual "Space Opera [t 720p].mp4" "$(NormalizeTitle "demo a/b space opera demo [t 720p].mp4")"
+cp "$TMP/patterns.bak" "$DRB_DATA/media-fixtitle-patterns.shdata"
+
 SetTestName "NormalizeTitle ignores the comment lines in the word lists"
 # Every word here is in the abbreviation or filler file's comment line
 AssertEqual "Set All Other Words That Should Appear Media Titles [t 720p].mp4" "$(NormalizeTitle "set all other words that should appear media titles [t 720p].mp4")"

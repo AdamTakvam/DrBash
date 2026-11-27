@@ -160,8 +160,9 @@ NormalizeTitle() {
 
   # Perform the requested deletions
   local newTitle="$title"
+  local -r d=$'\x1f'   # sed delimiter: unit separator never appears in a pattern, so patterns can use | and /
   for pattern in "${TRIMPATTERNS[@]}"; do
-    newTitle="$(echo "$newTitle" | sed -E "s|$pattern||ig")"
+    newTitle="$(sed -E "s${d}${pattern}${d}${d}ig" <<< "$newTitle")"
     if [ $(LogDebugEnabled) ] && [ "$newTitle" == "$title" ] && [ "$(echo "$newTitle" | grep -i "$pattern")" ]; then
       LogDebugError "\nPattern discrepancy: "$pattern"\nOld Title: "$title"\nNew Title: "$newTitle""
       read -n1 -p "[C]ontinue? [Q]uit?" input
