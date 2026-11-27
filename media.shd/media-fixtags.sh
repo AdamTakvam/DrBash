@@ -312,6 +312,10 @@ FixTags() {
   [ -e "$filename" ] || return 0 # Hack around bash bugs
   [ ${#filename} -lt 5 ] && return 0
   [[ "$filename" =~ .$LastRunFileExt$ ]] && return 0
+  if ! IsMediaFile "$filename"; then
+    LogVerbose "Skipping (not a media file): $filename"
+    return 0
+  fi
 
   newFilename="$(NormalizeTags "$filename" $rezOverride)"
   [ "$?" == 0 ] || return 1 

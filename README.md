@@ -248,7 +248,7 @@ The media settings can also go in `$DRB_DATA/media-scripts.conf`. Each one is op
 
 * DRB_MEDIA_REPO - This is your main media repository. Default: `~/Videos`
 * DRB_MEDIA_STAGING - Where new media lands before it's processed. Default: `<repo>/Staging`
-* DRB_MEDIA_EXTS - File extensions that should be considered media files. Default: `mp4 avi`
+* DRB_MEDIA_EXTS - File extensions that should be considered media files. media-fixtitle, media-fixtags and media-merge leave every other file alone (media-fixtitle still deletes files that match its deletion patterns). Case doesn't matter to media-fixtitle and media-fixtags. Default: `mp4 avi`
 * DRB_MEDIA_PLAYLISTS - Where playlists are saved. Default: `~/Videos/Playlists`
 * DRB_MEDIA_MAP - Maps local paths to the paths your client machines use, for playlists.
 * DRB_MEDIA_COMPACT, DRB_MEDIA_REPOSEARCH - Behavior toggles (true/false). Default: `true`

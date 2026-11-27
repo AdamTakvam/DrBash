@@ -31,14 +31,14 @@ PrintHelp() {
   Log
   Log "Environment Variables:"
   LogTable "\tMEDIAREPO\tThe location of your main media repositrory
-  \tMEDIAEXTS\tA space-delimited list of your media file extensions (default=avi mp4)."
+  \tDRB_MEDIA_EXTS\tA space-delimited list of your media file extensions (default=$_MEDIA_EXTS_DEF)."
   Log
   LogHeader "Configuration File:"
   Log "\tFor convenience, you may also configure this script via a configuration file. The configuration file must be a Bash-sourcable script simply declaring the names and values of the operative variables used in this script (as listed above)."
   Log "\tConfig file location: ${DRB_DATA}/media-scripts.conf"
   Log "\tExample content:"
   Log "\t\tMEDIAREPO='/path/to/my/media'"
-  Log "\t\tMEDIAEXTS='mpeg mp4 avi gif'"
+  Log "\t\tDRB_MEDIA_EXTS='mpeg mp4 avi gif'"
   Log "\tNotes:" 
   Log "\t\t1. The config file location can be controlled by setting the DRB_DATA environment variable." 
   Log "\t\t2. This configuration file is shared with other scripts in this collection and may include more variable definitions than just the ones mentioned here. Just make sure that the ones you need are defined and correct and you can safely ignore any others."
@@ -56,7 +56,8 @@ _GetMediaFiles() {
 DoMerge() {
   local -r stagingdir="$(realpath "$PWD")"
   [ -z "$mediadir" ] && mediadir="$(realpath "$MEDIAREPO")"
-  local -a mediaexts=(${MEDIAEXTS:-avi mp4})
+  local -a mediaexts
+  IFS=$' \t\n' read -ra mediaexts <<< "$(ConfigGet_MEDIA_EXTS)"
   EditArray -p='*.' mediaexts
   LogVerbose "mediaexts=$(SerializeArray mediaexts)"
 

@@ -158,6 +158,16 @@ NewMediaDir "One [scifi 720p].mp4" "Two [sf 1080p].mp4"
 RunMedia media-fixtags -fl -y
 AssertEqual $'0 One [sci.fi 720p].mp4\nTwo [sci.fi 1080p].mp4' "$RC $(ls)"
 
+SetTestName "media-fixtags leaves files that aren't media (DRB_MEDIA_EXTS) alone"
+NewMediaDir "One [scifi 720p].mp4" "Notes [scifi 720p].txt" "swapfile.sys"
+RunMedia media-fixtags -fl -y
+AssertEqual $'0 Notes [scifi 720p].txt\nOne [sci.fi 720p].mp4\nswapfile.sys' "$RC $(ls)"
+
+SetTestName "media-fixtags works on extensions added to DRB_MEDIA_EXTS, in any case (and lower-cases them)"
+NewMediaDir "One [scifi 720p].MKV"
+DRB_MEDIA_EXTS="mp4 .mkv" RunMedia media-fixtags -fl -y
+AssertEqual "0 One [sci.fi 720p].mkv" "$RC $(ls)"
+
 cp "$TMP/tagfixes.bak" "$TAGFIXES_FILE"
 
 # ---------- media-fixtitle: NormalizeTitle() ----------
@@ -227,6 +237,11 @@ SetTestName "media-fixtitle finds tagged files on a full scan (no file names giv
 NewMediaDir "the lord of the rings [fav 1080p].mp4"
 RunMedia media-fixtitle -fl
 AssertEqual "0 The Lord of the Rings [fav 1080p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtitle leaves files that aren't media (DRB_MEDIA_EXTS) alone"
+NewMediaDir "the lord of the rings [fav 1080p].mp4" "Read me [x 720p].txt" "Swapfile.sys"
+RunMedia media-fixtitle -fl
+AssertEqual $'0 Read me [x 720p].txt\nSwapfile.sys\nThe Lord of the Rings [fav 1080p].mp4' "$RC $(ls)"
 
 SetTestName "media-fixtitle simulation (-s) doesn't rename"
 NewMediaDir "the lord of the rings [fav 1080p].mp4"

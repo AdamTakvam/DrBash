@@ -429,6 +429,12 @@ FixTitle() {
     return 0
   fi
 
+  # Only media files are renamed (DRB_MEDIA_EXTS). Junk files above are deleted whatever their extension.
+  if ! IsMediaFile "$filename"; then
+    LogVerbose "Skipping (not a media file): $filename"
+    return 0
+  fi
+
   newFilename="$(NormalizeTitle "$filename")"
   [ $? == 0 ] || return 0     # Skip it; NormalizeTitle() already said why
 

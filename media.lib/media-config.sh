@@ -62,6 +62,19 @@ ConfigGet_MEDIA_EXTS() {
   ConfigGet MEDIA_EXTS
 }
 
+# Succeeds if the file's extension is one of DRB_MEDIA_EXTS (case doesn't matter; a leading dot in the list is fine)
+# + $1 = File name
+IsMediaFile() {
+  [[ "$1" == *.* ]] || return 1
+  local -l ext="${1##*.}" e
+  local -a exts
+  IFS=$' \t\n' read -ra exts <<< "$(ConfigGet_MEDIA_EXTS)"
+  for e in "${exts[@]}"; do
+    [[ "$ext" == "${e#.}" ]] && return 0
+  done
+  return 1
+}
+
 # Display media properties in compact (one line) form
 ConfigGet_MEDIA_COMPACT() {
   ConfigEvalBool "${DRB_MEDIA_COMPACT:-$_MEDIA_COMPACT_DEF}" >/dev/null
