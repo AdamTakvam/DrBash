@@ -128,6 +128,30 @@ AssertSubstring "not a valid associative array" "$OUT"
 
 SetTestName "media-fixtags leaves files alone when the tag fixes file is malformed"
 AssertEqual "Movie [favorite 480p].mp4" "$(ls)"
+
+cat > "$TAGFIXES_FILE" <<'EOF'
+(
+  ['(^|\s)(scifi|sf)(\s|$)']='\1sci.fi\3'
+  ['\sdocumentary\s']=' doc '
+  ['(^|\s)(noir)(\s|$)']='\1film.noir\3'
+  ['(^|\s)(romcom)(\s|$)']='\1romance comedy\3'
+  ['bad(']='x'
+)
+EOF
+
+SetTestName "media-fixtags fixes neighbouring tags in one run, with either whole-tag style"
+NewMediaDir "Clip [scifi documentary noir 720p].mp4"
+RunMedia media-fixtags -fl -y "Clip [scifi documentary noir 720p].mp4"
+AssertEqual "0 Clip [sci.fi doc film.noir 720p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtags removes duplicate tags, keeping the first, including ones a fix splits off"
+NewMediaDir "Clip [classic comedy classic romcom 720p].mp4"
+RunMedia media-fixtags -fl -y "Clip [classic comedy classic romcom 720p].mp4"
+AssertEqual "0 Clip [classic comedy romance 720p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtags reports a fix sed rejects and still applies the others"
+AssertSubstring "Ignoring tag fix that sed rejects: [bad(]='x'" "$OUT"
+
 cp "$TMP/tagfixes.bak" "$TAGFIXES_FILE"
 
 # ---------- media-fixtitle: NormalizeTitle() ----------

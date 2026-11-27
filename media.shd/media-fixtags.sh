@@ -47,6 +47,8 @@ PrintHelp () {
   LogTable "\tAssociative array of extended regular expressions to match with tags (key)
     \tand values to replace them with (value)
     \tTest with: sed -E s/key/value/
+    \tEach fix runs on one tag at a time, with a space on both sides of it.
+    \tDuplicate tags are removed after the fixes run.
     \tFormatted as an associative array definition. For example:
     \t( [key1]=value1 \\ 
     \t  [key2]=value2 )"
@@ -67,24 +69,20 @@ PrintHelp () {
   Log
 }
 
-# THIS IS TOO DIFFICULT FOR BASH.
-# MOVE TO C#
-#
-# Remove duplicate tags
-# $1 = tags[]
-# output = dedupedTags[]
-# DedupeTags() {
-#  declare -a incomingTags=($1)
-#  declare -A workingDict
-#
-  # Add the values from the array as keys in a dictionary 
-  # because it will enforce uniqueness
-#  for tag in ${incomingTags[*]}; do
-#    workingDict+=(["$tag"]='_')
-#  done
-#
-#  echo "${!workingDict[*]}"
-#}
+# Applies the tag fixes to each tag on its own, then removes duplicate tags (the first one stays).
+# Each tag gets a space on both sides while the fixes run, so a rule can mark a whole tag with
+#   (^|\s)...(\s|$) or with \s...\s. A rule can't match across two tags.
+# A fix that puts a space in a tag splits it into two tags.
+# +$1 = tags, separated by spaces
+# -stdout = fixed tags, separated by single spaces
+FixTagList() {
+  local fixed
+  fixed="$(tr -s '[:space:]' '\n' <<< "$1" | sed 's/.*/ & /')"
+  if (( ${#TAGFIX_SED[@]} )); then
+    fixed="$(sed -E "${TAGFIX_SED[@]}" <<< "$fixed")" || return 1
+  fi
+  tr -s '[:space:]' '\n' <<< "$fixed" | awk 'NF && !seen[$0]++' | paste -sd' '
+}
 
 # If tag list does not contain the file resolution,
 #   this method will add it
@@ -149,13 +147,9 @@ NormalizeTags() {
   #           "${arr[@]}"  <-- Iteration
   #           "${!arr[@]}" <-- Get key values of associative array (hashtable)
 
-  # Perform tag substitutions
+  # Perform tag substitutions and remove duplicate tags
   if [ "$tags" ]; then
-    for tag in "${!TAGFIXES[@]}"; do
-      tagfix="${TAGFIXES["$tag"]}"
-      tags="$(echo "$tags" | sed -E "s/$tag/$tagfix/g")"
-    done
-    unset tagfix
+    tags="$(FixTagList "$tags")" || { LogErrorTee "ERROR: Tag fixes failed on: $file"; return 1; }
   fi
 
   # LogDebugError -n "b "
@@ -163,10 +157,6 @@ NormalizeTags() {
   # Add a resolution tag if one doesn't already exist
   tags="$(EnsureRezTag "$file" "$tags" "$rez_override")"
   [ "$?" != 0 ] || [ -z "$tags" ] && return 1 
-
-  # TODO: MOVE TO PYTHON
-  # Remove any duplicated tags after the replacements
-  #tags="$(DedupeTags "$tags")"
 
   # LogDebugError -n "c " 
   
@@ -233,7 +223,19 @@ ReadConfig() {
   # Load the tagfixes data file
   declare -gA TAGFIXES    # -g: NormalizeTags() uses it after this function returns
   ConfigFile_TAGFIXES TAGFIXES
-  LogVerbose "TagFixes: ${#TAGFIXES[@]}"      
+  LogVerbose "TagFixes: ${#TAGFIXES[@]}"
+
+  # Turn the fixes into one sed script, so each file needs one sed run instead of one per fix.
+  # A fix sed rejects is reported and left out, rather than failing every file.
+  declare -ga TAGFIX_SED=()
+  local tag
+  for tag in "${!TAGFIXES[@]}"; do
+    if sed -E "s/$tag/${TAGFIXES[$tag]}/g" </dev/null 2>/dev/null; then
+      TAGFIX_SED+=(-e "s/$tag/${TAGFIXES[$tag]}/g")
+    else
+      LogError "Ignoring tag fix that sed rejects: [$tag]='${TAGFIXES[$tag]}'"
+    fi
+  done
 }
 
 declare -a fileSet
