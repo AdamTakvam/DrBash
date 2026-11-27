@@ -1,0 +1,17 @@
+# ShellCheck settings for Dr. Bash. Run from the repo root: shellcheck <script>
+shell=bash
+
+# Not bugs here:
+# SC1090,SC1091  Can't follow source with a dynamic path ($DRB_LIB/...)
+# SC2275         Dr. Bash's own source command is called =
+# SC2034         "Unused" variables that are used through namerefs (local -n) or by sourcing scripts
+# SC2154         Variables set by the libraries a script sources
+# SC2004         $ inside $(( )) is unnecessary (style)
+# SC2006         Backticks instead of $( ) (style)
+# SC2219         let instead of (( )) (style)
+# SC2001         sed where ${var//...} would do (style)
+# SC2162         read without -r (only matters for backslashes in input)
+# SC2181         Checking $? instead of the command itself (style)
+# SC2015         A && B || C isn't if-then-else (used deliberately)
+# SC2317         "Unreachable" code that's reached through traps or indirect calls
+disable=SC1090,SC1091,SC2275,SC2034,SC2154,SC2004,SC2006,SC2219,SC2001,SC2162,SC2181,SC2015,SC2317
