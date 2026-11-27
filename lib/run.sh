@@ -202,7 +202,7 @@ _Run_FindCmd() {
   local cmdType=$(type -t "$cmd")
   if [ "${cmdType,,}" == "file" ]; then
     LogDebugError "$FNAME: $cmd is a file in the PATH."
-    echo "$cmd"
+    type -P "$cmd"    # The full path: sudo only searches its own secure_path, not ours
     return 0
   elif [ "$cmdType" ]; then
     LogDebugError "$FNAME: $cmd is a $cmdType."

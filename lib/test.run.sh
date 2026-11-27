@@ -63,4 +63,7 @@ Run -r -u true
 Run -u PrintArgs >/dev/null
 Check "Test 11: Flags from one call don't leak into the next" "" "${root-}${user-}"
 
+# sudo only searches its own secure_path, so a command found in our PATH must come back as a full path
+Check "Test 12: A command in the PATH resolves to its full path" "$(type -P ls)" "$(_Run_FindCmd ls)"
+
 exit $retval
