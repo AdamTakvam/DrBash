@@ -262,7 +262,7 @@ BuildTargetList() {
   if [ "$testMode" ]; then
     declare -r testFilePrefix='='
   
-    IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f -name "$testFilePrefix*" | sed 's/^\.\///'))
+    IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f -name "$testFilePrefix*" | sed 's/^\.\///')
     LogDebug "--- Running in Testing Mode ---"
     
     for tfile in "${fileSet[@]}"; do
@@ -281,7 +281,7 @@ BuildTargetList() {
   elif [ $shortRun ]; then
     Log "Performing abbreviated run because $successReason"
     # The sed part removes the leading ./ from the filename
-    IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f -newer "$LastRunFile" | sed 's/^\.\///'))
+    IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f -newer "$LastRunFile" | sed 's/^\.\///')
   else
     if [ $forceShortRun ]; then
       LogError "Cannot perform abbreviated run because $failReason"
@@ -289,7 +289,7 @@ BuildTargetList() {
       Log "Performing full scan of $PWD"
     fi
 
-    IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f | sed 's/^\.\///'))
+    IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f | sed 's/^\.\///')
   fi
   
   Log "Found ${#fileSet[*]} files..."

@@ -49,7 +49,7 @@ _GetMediaFiles() {
   media_files=()
 
   for ext in "${mediaexts[@]}"; do
-    IFS=$'\n' media_files+=($(ls -1 $ext 2>/dev/null))
+    IFS=$'\n'; media_files+=($ext)   # nullglob is on (drbash.sh): no match adds nothing
   done
 }
 
@@ -145,7 +145,7 @@ DoMerge() {
       fi
     fi
 
-    IFS=$'\n' otherfiles=($(ls))
+    IFS=$'\n'; readarray -t otherfiles < <(ls)
 
     if [ "${#otherfiles[@]}" != 0 ]; then
       EditArray -p=$'\t* ' otherfiles

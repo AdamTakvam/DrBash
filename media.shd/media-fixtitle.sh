@@ -287,11 +287,11 @@ ReadConfig() {
 # This way, we can do all of the renames first and then bug the user for 
 #   confirmation of the deletions at the end 
 #   so they have time to go grab a mug of coffee while the renames run
-declare -a deleteFiles=
+declare -a deleteFiles=()
 
 # targetFiles is an array of file names specified on the command line that overrides 
 #   the default behavior of acting on the entire repository directory.
-declare -a targetFiles=
+declare -a targetFiles=()
 
 ParseCLI() {
   # Parse command line args
@@ -362,7 +362,7 @@ BuildTargetList() {
   else
     failReason="the requested text to remove does not match what was previously specified.\n"
     failTemp="Previous:\tCurrent:\n"
-    IFS=$'\n' lrfPatterns=($(cat $LastRunFile))
+    IFS=$'\n'; readarray -t lrfPatterns < "$LastRunFile"
     for (( i=0; i<${#TRIMPATTERNS[*]}; i++ )); do
       failTemp+="${lrfPatterns[$i]}\t${TRIMPATTERNS[$i]}\n"
     done
@@ -372,7 +372,7 @@ BuildTargetList() {
   if [ "$testMode" ]; then
     declare -r testFilePrefix='='
     
-    IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f -name "$testFilePrefix*" | sed 's/^\.\///'))
+    IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f -name "$testFilePrefix*" | sed 's/^\.\///')
     LogDebug "--- Running in Testing Mode ---"
     
     for tfile in "${fileSet[@]}"; do
@@ -391,10 +391,10 @@ BuildTargetList() {
   elif [ $shortRun ]; then
     Log "Performing abbreviated run because $successReason"
     # The sed part removes the leading ./ from the filename
-    IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f -newer "$LastRunFile" | sed 's/^\.\///'))
+    IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f -newer "$LastRunFile" | sed 's/^\.\///')
   else
     LogError "Cannot perform abbreviated run because $failReason"
-    IFS=$'\n'; fileSet=($(find . -maxdepth 1 -type f | sed 's/^\.\///'))
+    IFS=$'\n'; readarray -t fileSet < <(find . -maxdepth 1 -type f | sed 's/^\.\///')
   fi
   
   LogVerbose "Found ${#fileSet[*]} files..."

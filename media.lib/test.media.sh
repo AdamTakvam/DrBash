@@ -152,6 +152,12 @@ AssertEqual "0 Clip [classic comedy romance 720p].mp4" "$RC $(ls)"
 SetTestName "media-fixtags reports a fix sed rejects and still applies the others"
 AssertSubstring "Ignoring tag fix that sed rejects: [bad(]='x'" "$OUT"
 
+SetTestName "media-fixtags finds tagged files on a full scan (no file names given)"
+# Tag brackets are glob syntax; with nullglob on, a word-split file list used to drop them
+NewMediaDir "One [scifi 720p].mp4" "Two [sf 1080p].mp4"
+RunMedia media-fixtags -fl -y
+AssertEqual $'0 One [sci.fi 720p].mp4\nTwo [sci.fi 1080p].mp4' "$RC $(ls)"
+
 cp "$TMP/tagfixes.bak" "$TAGFIXES_FILE"
 
 # ---------- media-fixtitle: NormalizeTitle() ----------
@@ -216,6 +222,11 @@ AssertEqual "0 Keeper [x 720p].mp4" "$RC $(ls)"
 SetTestName "media-fixtitle warns about the ignored pattern"
 AssertSubstring "Ignoring deletion pattern that would match every file: ()" "$OUT"
 cp "$TMP/delete.bak" "$DRB_DATA/media-fixtitle-delete.shdata"
+
+SetTestName "media-fixtitle finds tagged files on a full scan (no file names given)"
+NewMediaDir "the lord of the rings [fav 1080p].mp4"
+RunMedia media-fixtitle -fl
+AssertEqual "0 The Lord of the Rings [fav 1080p].mp4" "$RC $(ls)"
 
 SetTestName "media-fixtitle simulation (-s) doesn't rename"
 NewMediaDir "the lord of the rings [fav 1080p].mp4"
