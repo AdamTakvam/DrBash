@@ -480,6 +480,13 @@ FixTitle() {
     if [ "$renameFile" == "y" ]; then
       Journal "$fileOpText" 
 
+      # Never overwrite another file: two names that normalize the same are usually duplicates, and need a person.
+      # -ef: on a case-insensitive file system, a case-only rename "exists" already, but it's the same file.
+      if [ -e "$newFilename" ] && ! [ "$filename" -ef "$newFilename" ]; then
+        LogError "Not renamed, because another file already has the new name (duplicate?): $filename"
+        return 1
+      fi
+
       # At long last... DO SOMETHING!
       Run mv "$filename" "$newFilename"
       [ $? == 0 ] && (( ++renameCount ))   # Pre-increment: (( 0 )) counts as failure

@@ -158,6 +158,15 @@ NewMediaDir "One [scifi 720p].mp4" "Two [sf 1080p].mp4"
 RunMedia media-fixtags -fl -y
 AssertEqual $'0 One [sci.fi 720p].mp4\nTwo [sci.fi 1080p].mp4' "$RC $(ls)"
 
+SetTestName "media-fixtags won't overwrite another file that already has the new name"
+NewMediaDir "One [scifi 720p].mp4" "One [sci.fi 720p].mp4"
+echo "keep me" > "One [sci.fi 720p].mp4"
+RunMedia media-fixtags -fl -y
+AssertEqual $'One [sci.fi 720p].mp4\nOne [scifi 720p].mp4|keep me' "$(ls)|$(cat "One [sci.fi 720p].mp4")"
+
+SetTestName "media-fixtags reports the file it didn't rename"
+AssertSubstring "Not renamed, because another file already has the new name (duplicate?): One [scifi 720p].mp4" "$OUT"
+
 SetTestName "media-fixtags leaves files that aren't media (DRB_MEDIA_EXTS) alone"
 NewMediaDir "One [scifi 720p].mp4" "Notes [scifi 720p].txt" "swapfile.sys"
 RunMedia media-fixtags -fl -y
@@ -237,6 +246,15 @@ SetTestName "media-fixtitle finds tagged files on a full scan (no file names giv
 NewMediaDir "the lord of the rings [fav 1080p].mp4"
 RunMedia media-fixtitle -fl
 AssertEqual "0 The Lord of the Rings [fav 1080p].mp4" "$RC $(ls)"
+
+SetTestName "media-fixtitle won't overwrite another file that already has the new name"
+NewMediaDir "the movie [x 720p].mp4" "The Movie [x 720p].mp4"
+echo "keep me" > "The Movie [x 720p].mp4"
+RunMedia media-fixtitle -fl
+AssertEqual $'1 The Movie [x 720p].mp4\nthe movie [x 720p].mp4|keep me' "$RC $(LC_ALL=C ls)|$(cat "The Movie [x 720p].mp4")"
+
+SetTestName "media-fixtitle reports the file it didn't rename"
+AssertSubstring "Not renamed, because another file already has the new name (duplicate?): the movie [x 720p].mp4" "$OUT"
 
 SetTestName "media-fixtitle leaves files that aren't media (DRB_MEDIA_EXTS) alone"
 NewMediaDir "the lord of the rings [fav 1080p].mp4" "Read me [x 720p].txt" "Swapfile.sys"
