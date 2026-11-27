@@ -31,7 +31,8 @@ GetResolution() {
   [[ -z "$file" ]] && return 99
 
   local IFS=$'\n' 
-  local -a rezArr=($(Run -u exiftool -ImageHeight -ImageWidth "$file" | awk '{ printf $4"\n" }'))
+  # -m: also read files exiftool calls minor-broken, e.g. an index (moov atom) over 32 MiB in a very long video
+  local -a rezArr=($(Run -u exiftool -m -ImageHeight -ImageWidth "$file" | awk '{ printf $4"\n" }'))
   if [ "${#rezArr[@]}" != 2 ]; then
     LogError "Unable to read resolution from: $file (no data)"
     return 1
