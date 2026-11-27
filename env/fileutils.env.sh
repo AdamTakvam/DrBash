@@ -44,7 +44,8 @@ shfs() {
 # - stdout = A space-delimited list of the types of special characters found
 #             The exact names of the special chars are in single-quotes in the retval description below
 #             If none are found or $2 specified, then nothing
-# - retval =  Bitfield reflecting the types of special characters detected in the supplied filename
+# - FILENAME_SPECIAL_CHARS = Bitfield reflecting the types of special characters detected (table below)
+# - retval =  The same bitfield, but only its first 8 bits (1-128): exit codes stop at 255
 #     Binary      Dec   Meaning                             Comment
 #                0 0     $1 contains no special characters
 #                1 1     $1 contains 'spaces'               Will we ever get to a point where this just works?
@@ -65,53 +66,44 @@ shfs() {
 # 1000000000000000 32768 $1 contains 'unprintable_ASCII'    (codes 0-31) Not implemented yet
 FilenameContainsSpecialChars() {
   local file="$1"
-  local -i retval=0
+  local -i retval=0 bit=1 i
   local echoStr=''
-  local -Ar CHARS=( \
-    [' ']='spaces' \
-    [$'\n']='newlines' \
-    [$'\0']='nulls' \
-    ['"']='double-quotes' \
-    ["'"]='single-quotes' \
-    ['|']='pipes' \
-    [':']='colons' \
-    ['/']='slashes' \
-    ['\']='backslashes' \
-    ['<']='less-thans' \
-    ['>']='greater-thans' \
-    ['*']='asterisks')  
-  local -i currBitValue=1
 
+  # In bit order (see the table above). Bash strings can't hold a NUL byte, so $1 can never
+  #   contain one: 'nulls' (bit 4) keeps its place but is never set.
+  local -a chars=(' ' $'\n' '' '"' "'" '|' ':' '/' '\' '<' '>' '*')
+  local -a names=(spaces newlines nulls double-quotes single-quotes pipes colons slashes backslashes less-thans greater-thans asterisks)
+
+  declare -gi FILENAME_SPECIAL_CHARS=0
   [ -z "$file" ] && return 0
 
-  for c in "${!CHARS[@]}"; do
-    if [[ "$file" =~ "$c" ]]; then
-      echoStr=" ${CHARS["$c"]}"
-      retVal+=$currBitValue
+  for (( i=0; i < ${#chars[@]}; i++, bit*=2 )); do
+    if [[ -n "${chars[$i]}" && "$file" == *"${chars[$i]}"* ]]; then
+      echoStr+=" ${names[$i]}"
+      (( retval |= bit ))
     fi
-    currBitValue*=2
   done
 
-  if [ "${file: -1}" == ' ' ] || [ "${file: -1}" == '.' ]; then
-    echoStr=' ends_in_a_space_or_a_dot'
-    retVal+=$currBitValue
+  if [[ "${file: -1}" == ' ' || "${file: -1}" == '.' ]]; then
+    echoStr+=' ends_in_a_space_or_a_dot'
+    (( retval |= bit ))
   fi
-  currBitValue*=2
+  (( bit *= 2 ))
 
   if [ "$file" == '.' ]; then
-    echoStr=' single_dot'
-    retVal+=$currBitValue
+    echoStr+=' single_dot'
+    (( retval |= bit ))
   fi
-  currBitValue*=2
+  (( bit *= 2 ))
 
   if [ "$file" == '..' ]; then
-    echoStr=' two_dots'
-    retVal+=$currBitValue
+    echoStr+=' two_dots'
+    (( retval |= bit ))
   fi
-  currBitValue*=2
 
+  FILENAME_SPECIAL_CHARS=$retval
   [ -z "$2" ] && echo -n "${echoStr:1}"
-  return $retVal
+  return $(( retval & 255 ))   # Exit codes stop at 255: the full bitfield is in FILENAME_SPECIAL_CHARS
 }
 
 ### Example of how to use FilenameContainsSpecialChars by return code
