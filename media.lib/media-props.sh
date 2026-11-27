@@ -25,7 +25,7 @@ declare -irg min_320=129600
 # + $1 = File name
 # - stdout = Resolution tag (e.g. "4k", "1080p", etc)
 GetResolution() {  
-  Requires exiftool
+  Require libimage-exiftool-perl
   
   local -r file="$1"
   [[ -z "$file" ]] && return 99
